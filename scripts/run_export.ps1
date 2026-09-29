@@ -1,10 +1,9 @@
-# Resume a MapExportPlugin job until its status file says done, then run the
-# matching Python step. An external program can start this. Exit codes:
-#   0 done, 1 a step failed, 2 bad arguments or Workbench/python missing, 3 world did not load.
-# There is no prompt and no tool button. scripts\run_export.cmd runs every job.
+# Every export, started by an external program. No prompts.
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_export.ps1
+# Prefer scripts\run_export.cmd if the caller cannot change execution policy.
 param(
-    [Parameter(Mandatory = $true)][ValidateSet("buildings", "roads", "satellite")][string]$Job,
     [string]$Map = "everon",
+    [string]$Jobs = "buildings,roads,satellite",
     [int]$MaxTiles = 2,
     [string]$Workbench = "",
     [string]$ProfileRoot = "",
@@ -16,7 +15,7 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\_invoke.ps1"
 $runnerArgs = @(
     "--map", $Map,
-    "--jobs", $Job,
+    "--jobs", $Jobs,
     "--max-tiles", "$MaxTiles"
 )
 if ($Workbench) { $runnerArgs += @("--workbench", $Workbench) }
