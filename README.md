@@ -6,32 +6,6 @@ The addon depends on the game project `58D0FB3206B6F859`. Open Workbench on this
 
 `maps/everon.json` has the island size, tile size, and the world resource. **Confirm that world in the World Editor before the first run.** The usual Everon world is `worlds/Eden/Eden.ent`. If it is not the world you have open, change the string. The plugin does not hardcode it. A probe of nine boxes across the island exits 3 and writes nothing when the world did not load. A loaded Everon has about 1.2 million editor entities.
 
-## From another program
-
-One command runs the whole export through the World Editor with no button and no prompt. Workbench is started with `-wbModule=WorldEditor -run -load <world> -plugin=MapExportPlugin`, closed when the plugin calls `Workbench.Exit`, and started again until that job's status file says `done`. The building JSON, the dirt/bridge check, and the satellite tiles run after the matching job. The caller just waits for the process.
-
-```
-scripts\run_export.cmd --map everon
-```
-
-The same thing from Python, or from PowerShell if you can set the execution policy:
-
-```
-python py/run_export.py --map everon
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_export.ps1 -Map everon
-```
-
-`--jobs buildings,roads,satellite` is the default. `--max-tiles 2` is how many new tiles one Workbench launch may write. `--workbench` is the exe if it is not in the usual Steam folder (`ARMA_REFORGER_WORKBENCH` is checked too). While it runs, `<profile>\reforger_map\<map>\pipeline.status.json` is `partial`, then `done` or `failed`.
-
-| Exit | Meaning |
-|---|---|
-| 0 | Every requested step finished |
-| 1 | A step failed, or a launch made no progress |
-| 2 | The map file, Python, or Workbench could not be found |
-| 3 | The world did not load. Nothing was written, and later jobs are not started |
-
-`scripts\export_buildings.ps1`, `export_roads.ps1`, and `export_satellite.ps1` are the same runner with one job. The editor camera fov and far plane still have to be set once before a satellite run. No script API can set them.
-
 ## Buildings
 
 ```
@@ -89,7 +63,7 @@ Each shot's center square is the ground square in `s_TX_TZ.txt`. Workbench's scr
 ## Tests
 
 ```
-python -m unittest test_run_export.py test_road_cover.py test_make_tiles.py test_buildings_to_json.py
+python -m unittest test_road_cover.py test_make_tiles.py test_buildings_to_json.py
 ```
 
 Run that from `py/`.
