@@ -1,0 +1,12 @@
+GameProject {
+ ID "ReforgerMapTools"
+ GUID "6A1F0C52D83E97B4"
+ TITLE "Reforger Map Tools - export"
+ Dependencies {
+  "58D0FB3206B6F859"
+ }
+ Configurations {
+  GameProjectConfig PC {
+  }
+ }
+}
