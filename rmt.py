@@ -2,6 +2,7 @@
 
   python rmt.py worlds [--refresh]                 list the worlds Workbench can see
   python rmt.py export <world> [options]           run the export jobs for one world
+  python rmt.py bake <world> [--parts a,b,c]       bake the newest export into site data (out/<slug>/<build>/site)
 
 <world> is a .ent file on disk (a mod map), a resource path ("worlds/Eden/Eden.ent"), or a world's file name
 ("Eden"). Steam must be running and Workbench closed. See PLAN.md.
