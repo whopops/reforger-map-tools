@@ -294,6 +294,42 @@ elevations the end flight is turned, not extrapolated.
   4.77 and 5.86°. Those, and the iron-sight marks, sit close to what the measured flights need, which is how the cross
   is known to be the bore.
 
+### `launchertest.py`: through a soldier's real launcher (written, not yet run)
+
+```bash
+python launchertest.py plan              # write the plan into the game profile (nothing runs)
+python launchertest.py run               # plan, then run the game; about 30 minutes
+python launchertest.py score [folder]    # the three reports below
+```
+
+`rockettest.py` launches rockets directly. This one fires them the way a player does, to check what the site's
+calculator assumes but `rockettest.py` can't show. The game's own AT soldiers carry the launchers: FIA AT (RPG-7, iron
+sight), USSR AT (RPG-7 with PGO-7), US LAT (M72A3), USSR LAT (RPG-22), FIA LAT (RPG-75). Each stands on a cliff 8 to
+60 m above the sea on `EmptyEden`, facing open sea. `RMT_LauncherTestEntity` (`Scripts/Game/RMT/RMT_LauncherTest.c`,
+flag `-rmtLauncher`) spawns a fresh soldier for every round, selects the launcher, takes the safety off, sets the
+zeroing (`SetSightsRange`), raises and aims down the sights. It then turns the soldier's aiming angles (the input
+context's `SetAimingAngles`, as the game's cinematics drive a character) until the **bore**, read from the weapon
+manager's muzzle transform, holds the planned bearing and elevation to 0.02° for four checks in a row. Then it pulls
+the trigger. At that moment it records the bore and every way the engine reports the sights:
+`GetSightsDirection`, `GetSightsTransform`, the rear and front sight points, and the weapon's zeroing transform. It
+then follows the rocket frame by frame.
+
+1. **Sights:** sights-only lines at every zeroing mark of every launcher measure the angle between the sight line and
+   the bore. The site takes it from the prefabs' `SightRangeInfo` `Angles`, and takes the PGO-7's cross as the bore.
+2. **Launch:** each fired rocket's first velocity against the bore: a fixed offset (the M72's 0.5° spawn angle), the
+   weapon's own scatter (`DispersionRange`, measured nowhere else) and the launch speed.
+3. **Hits:** each launcher fires 4 rounds at each of its marks (a level target in still air, the elevation from the
+   site's solver), plus 4 rounds in an 8 m/s crosswind with the site's aim-off. The miss is read where each rocket is
+   the target's distance out.
+
+Output in `<game profile>\rmt\launchertest\launcher\`: `plan.csv`
+(`id,soldier,launcher,x,z,az,el,zero,count,wspeed,wdir,stance`), `plan.json`, `shots.csv` (see the header of
+`RMT_LauncherTest.c`) and `traj.csv`.
+
+Untried: whether a character without a player or AI takes `SetAimingAngles` and `SetFireWeaponWanted` every frame as
+the cinematics suggest. If it doesn't, the aim gives up after 60 corrections and says so in the log (the shot still
+fires, with its real bore recorded).
+
 ### Output (`<game profile>\rmt\rockettest\w<n>\firetest\`)
 - `plan.csv` (`firetest.py`'s columns plus `y`) and `plan.json` (with rocket, elevation, wind and repeat)
 - `traj.csv`: `id,round,t,x,y,z,vx,vy,vz`, every frame; `shots.csv`: one line per rocket (where it ended)

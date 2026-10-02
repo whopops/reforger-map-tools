@@ -1,33 +1,39 @@
 """Reforger Map Tools: the desktop app. Pick a world, tick the data you want, choose a folder, press Start.
 
-Five pages, in the order a first run goes through them:
-  Setup  what this PC has (rmtlib/detect.py), and the Workbench override
+The pages, in the order a first run goes through them:
+  Setup  what this PC has (rmtlib/detect.py), the Workbench override, a desktop shortcut
   World  every world the installed addons hold (rmtlib/addons.py; no Workbench launch needed), or a .ent on disk
   Data   what to make (rmtlib/products.py), where to put it, and whether to install it into the field map
   Run    the plan, live progress from the engine's heartbeat, the log, Cancel
   Runs   every export in the output folder: open it, bake it again, install it
+  Labs   the standalone tools (rmtgui/labs.py): mortar, blast and rocket tests, gunshot audibility, game files, tests
 
-All the work happens in a child process (`rmt.py --events run ...`, rmtgui/worker.py); this window only shows it.
+All the work happens in a child process (`rmt.py --events run ...` or `rmt_gui.py --script ...`, rmtgui/worker.py);
+this window only shows it.
 """
 
 import glob
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
+import traceback
 
 from PySide6.QtCore import QSettings, Qt, QTimer, QUrl
 from PySide6.QtGui import QBrush, QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QFileDialog, QFormLayout, QFrame, QGroupBox, QHBoxLayout,
-    QHeaderView, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPlainTextEdit,
-    QProgressBar, QPushButton, QSpinBox, QSplitter, QStackedWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-    QWidget,
+    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout, QFrame,
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
+    QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QSpinBox, QSplitter, QStackedWidget, QTreeWidget,
+    QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
 from rmtlib import addons, detect, paths, products
 from rmtlib.fieldmap import MAP_IDS, default_field_map
 
+from . import labs
 from .worker import Worker
 
 APP = "Reforger Map Tools"
@@ -74,6 +80,36 @@ def folder_row(edit, parent, title):
     return row
 
 
+ICON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.ico")
+
+
+def make_shortcuts():
+    """'Reforger Map Tools' shortcuts on the desktop and in the Start menu that open this window with no console:
+    pythonw.exe rmt_gui.py (the interpreter running now, so the launcher's .venv when started from it), or the
+    packaged exe. Returns the paths made."""
+    if paths.FROZEN:
+        target, arguments = sys.executable, ""
+    else:
+        target = sys.executable
+        if os.path.basename(target).lower() == "python.exe":
+            w = os.path.join(os.path.dirname(target), "pythonw.exe")
+            target = w if os.path.isfile(w) else target
+        arguments = '"%s"' % os.path.join(paths.REPO, "rmt_gui.py")
+    ps = ("$sh = New-Object -ComObject WScript.Shell; "
+          "$dirs = @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs')); "
+          "foreach ($d in $dirs) { $p = Join-Path $d 'Reforger Map Tools.lnk'; $s = $sh.CreateShortcut($p); "
+          "$s.TargetPath = $env:RMT_TARGET; $s.Arguments = $env:RMT_ARGS; $s.WorkingDirectory = $env:RMT_DIR; "
+          "$s.Description = 'Reforger Map Tools'; if ($env:RMT_ICON) { $s.IconLocation = $env:RMT_ICON }; $s.Save(); $p }")
+    env = dict(os.environ, RMT_TARGET=target, RMT_ARGS=arguments, RMT_DIR=paths.bundle(),
+               RMT_ICON=ICON if os.path.isfile(ICON) else "")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True, env=env,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    made = [line.strip() for line in r.stdout.splitlines() if line.strip().endswith(".lnk")]
+    if r.returncode or not made:
+        raise RuntimeError(r.stderr.strip() or "PowerShell made no shortcut")
+    return made
+
+
 def get_install(workbench=None):
     """The Steam install, or (None, message) when something is missing."""
     from rmtlib.steam import Install
@@ -117,10 +153,22 @@ class SetupPage(QWidget):
         again = QPushButton("Check again")
         again.clicked.connect(self.refresh)
         row.addWidget(again)
+        shortcut = QPushButton("Add shortcuts (desktop and Start menu)")
+        shortcut.setToolTip("Start the app from a desktop icon or the Start menu next time.")
+        shortcut.clicked.connect(self.add_shortcuts)
+        row.addWidget(shortcut)
         row.addStretch(1)
         self.summary = QLabel()
         row.addWidget(self.summary)
         lay.addLayout(row)
+
+    def add_shortcuts(self):
+        try:
+            made = make_shortcuts()
+        except (OSError, RuntimeError) as e:
+            QMessageBox.warning(self, APP, f"Couldn't make the shortcuts:\n\n{e}")
+            return
+        QMessageBox.information(self, APP, "Made:\n\n" + "\n".join(made))
 
     def pick_workbench(self):
         path, _ = QFileDialog.getOpenFileName(self, "Workbench", self.wb.text() or "C:\\",
@@ -457,7 +505,9 @@ class RunPage(QWidget):
         row.addWidget(self.clock)
         row.addStretch(1)
         self.open_btn = QPushButton("Open output folder")
-        self.open_btn.clicked.connect(lambda: open_folder(self.site or self.win.data.out.text()))
+        self.open_btn.clicked.connect(lambda: open_folder(self.site or self.folder or self.win.data.out.text()))
+        self.resumable = True
+        self.folder = None
         row.addWidget(self.open_btn)
         self.save_btn = QPushButton("Save log…")
         self.save_btn.clicked.connect(self.save_log)
@@ -472,7 +522,9 @@ class RunPage(QWidget):
         self.timer.timeout.connect(self.tick)
 
     # -- lifecycle
-    def begin(self, title):
+    def begin(self, title, resumable=True, folder=None):
+        self.resumable = resumable
+        self.folder = folder
         self.items.clear()
         self.step_started.clear()
         self.tree.clear()
@@ -494,8 +546,8 @@ class RunPage(QWidget):
             if item.text(1) == "running":
                 self.set_state(item, "failed" if code else "done")
         if code == -1:
-            self.title.setText(self.title.text() + " — cancelled. Run it again to resume: finished jobs and chunks "
-                               "are kept.")
+            self.title.setText(self.title.text() + (" — cancelled. Run it again to resume: finished jobs and chunks "
+                                                    "are kept." if self.resumable else " — cancelled."))
         elif code == 0:
             self.title.setText(self.title.text() + " — finished.")
         else:
@@ -555,6 +607,11 @@ class RunPage(QWidget):
             if item is None:
                 return
             done, total = ev["done"], ev["total"]
+            if not total:  # a count with no known end (the gun test's rounds)
+                item.setText(2, f"{done} {ev.get('unit', '')}")
+                if item.text(1) == "waiting":
+                    self.set_state(item, "start")
+                return
             text = f"{done} / {total} {ev.get('unit', '')}"
             t0, first = self.step_started.get(ev["id"], (time.time(), None))
             if first is None:
@@ -694,13 +751,260 @@ class RunsPage(QWidget):
                         steps=[{"id": "install", "label": "Install into the field map"}])
 
 
+# ------------------------------------------------------------------------------------------------ Labs
+class LabsPage(QWidget):
+    """The standalone tools, one form per command, run like an export (Run page: log, progress, Cancel)."""
+
+    def __init__(self, win):
+        super().__init__()
+        self.win = win
+        self.widgets = []
+        lay = QVBoxLayout(self)
+        lay.addWidget(heading("Labs"))
+        lay.addWidget(note("The other tools in this folder: tests that measure the game for the field map's "
+                           "calculators, and helpers. They work on Everon and the field map's data (the field map "
+                           "folder on the Data page)."))
+        body = QHBoxLayout()
+        self.list = QListWidget()
+        self.list.setFixedWidth(190)
+        for t in labs.TOOLS:
+            item = QListWidgetItem(t["title"])
+            item.setData(Qt.ItemDataRole.UserRole, t["key"])
+            self.list.addItem(item)
+        self.list.currentRowChanged.connect(self.tool_changed)
+        body.addWidget(self.list)
+
+        right = QVBoxLayout()
+        self.desc = note("")
+        right.addWidget(self.desc)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Command"))
+        self.cmd = QComboBox()
+        self.cmd.currentIndexChanged.connect(self.cmd_changed)
+        row.addWidget(self.cmd, 1)
+        right.addLayout(row)
+        self.cmd_desc = note("")
+        right.addWidget(self.cmd_desc)
+        self.game_note = QLabel()
+        self.game_note.setWordWrap(True)
+        right.addWidget(self.game_note)
+
+        self.form_box = QGroupBox("Options")
+        self.form = QFormLayout(self.form_box)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(self.form_box)
+        right.addWidget(scroll, 1)
+
+        self.cmdline = QLabel()
+        self.cmdline.setWordWrap(True)
+        self.cmdline.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.cmdline.setFont(QFont("Consolas", 9))
+        self.cmdline.setToolTip("The same command for a terminal, from this folder.")
+        right.addWidget(self.cmdline)
+
+        row = QHBoxLayout()
+        self.doc_btn = QPushButton("Read the docs")
+        self.doc_btn.clicked.connect(self.open_doc)
+        row.addWidget(self.doc_btn)
+        self.results_btn = QPushButton("Open results folder")
+        self.results_btn.clicked.connect(self.open_results)
+        row.addWidget(self.results_btn)
+        self.copy_btn = QPushButton()
+        self.copy_btn.clicked.connect(self.copy_to_site)
+        row.addWidget(self.copy_btn)
+        row.addStretch(1)
+        self.run_btn = QPushButton("Run")
+        self.run_btn.setMinimumWidth(140)
+        self.run_btn.clicked.connect(self.start)
+        row.addWidget(self.run_btn)
+        right.addLayout(row)
+        body.addLayout(right, 1)
+        lay.addLayout(body, 1)
+
+        keys = [t["key"] for t in labs.TOOLS]
+        last = win.settings.value("lab", "firetest")
+        self.list.setCurrentRow(keys.index(last) if last in keys else 0)
+
+    # -- the form
+    def tool(self):
+        return labs.TOOLS[max(0, self.list.currentRow())]
+
+    def command(self):
+        return self.tool()["cmds"][max(0, self.cmd.currentIndex())]
+
+    def site_data(self):
+        fm = self.win.data.fieldmap.text().strip() if hasattr(self.win, "data") else ""
+        d = os.path.join(fm, "static", "data") if fm else ""
+        return d if d and os.path.isdir(d) else ""
+
+    def tool_changed(self, _row):
+        t = self.tool()
+        self.win.settings.setValue("lab", t["key"])
+        self.desc.setText(t["desc"])
+        self.cmd.blockSignals(True)
+        self.cmd.clear()
+        for c in t["cmds"]:
+            self.cmd.addItem(c["label"])
+        self.cmd.blockSignals(False)
+        self.doc_btn.setVisible(bool(t.get("doc")))
+        self.results_btn.setVisible(bool(t.get("results") or t.get("cwd")))
+        site_file = t.get("site_file")
+        self.copy_btn.setVisible(bool(site_file))
+        if site_file:
+            self.copy_btn.setText(f"Copy {site_file[1]} into the field map")
+        self.cmd_changed(0)
+
+    def cmd_changed(self, _i):
+        while self.form.rowCount():
+            self.form.removeRow(0)
+        self.widgets = []
+        c = self.command()
+        self.cmd_desc.setText(c["desc"])
+        for o in c["opts"]:
+            w, row = self._widget(o)
+            self.widgets.append(w)
+            label = QLabel(o["label"])
+            if o["help"]:
+                label.setToolTip(o["help"])
+                (row if isinstance(row, QWidget) else w).setToolTip(o["help"])
+            self.form.addRow(label, row)
+        if not c["opts"]:
+            self.form.addRow(note("No options."))
+        self.form_box.setVisible(True)
+        self.update_line()
+
+    def _widget(self, o):
+        k, d = o["kind"], o["default"]
+        if k == "int":
+            w = QSpinBox()
+            w.setRange(0, 100000)
+            w.setValue(d or 0)
+            w.valueChanged.connect(self.update_line)
+            return w, w
+        if k == "float":
+            w = QDoubleSpinBox()
+            w.setRange(0, 100000)
+            w.setDecimals(1)
+            w.setValue(d or 0)
+            w.valueChanged.connect(self.update_line)
+            return w, w
+        if k == "shells":
+            box = QWidget()
+            h = QHBoxLayout(box)
+            h.setContentsMargins(0, 0, 0, 0)
+            checks = []
+            for s in labs.BLAST_SHELLS:
+                cb = QCheckBox(s)
+                cb.setChecked(s in d)
+                cb.toggled.connect(self.update_line)
+                h.addWidget(cb)
+                checks.append(cb)
+            h.addStretch(1)
+            return checks, box
+        w = QLineEdit(self.site_data() if k == "site" else (d or ""))
+        w.textChanged.connect(self.update_line)
+        if k == "site":
+            w.setPlaceholderText("the field map's static\\data folder (default ~/Documents/GitHub/arma-map/...)")
+        if k in ("folder", "site"):
+            return w, folder_row(w, self, o["label"])
+        return w, w
+
+    def values(self):
+        out = {}
+        for i, (o, w) in enumerate(zip(self.command()["opts"], self.widgets)):
+            if o["kind"] == "shells":
+                out[i] = [cb.text() for cb in w if cb.isChecked()]
+            elif o["kind"] in ("int", "float"):
+                out[i] = w.value()
+            else:
+                out[i] = w.text()
+        return out
+
+    def update_line(self, *_):
+        c, v = self.command(), self.values()
+        self.cmdline.setText(labs.shown(labs.build(self.tool(), c, v)))
+        if labs.runs_game(c, v):
+            mins = f", about {c['minutes']} minutes" if c["minutes"] else ""
+            self.game_note.setText(f"Runs the game on screen{mins}. Steam must be running and the game closed; leave "
+                                   "the PC alone meanwhile.")
+            self.game_note.setStyleSheet(f"color: {WARN.name()};")
+        else:
+            self.game_note.setText("Nothing is launched: Python only.")
+            self.game_note.setStyleSheet(f"color: {OK.name()};")
+
+    # -- buttons
+    def results_folder(self):
+        t = self.tool()
+        if t.get("cwd"):
+            return os.path.join(paths.bundle(), t["cwd"])
+        install, err = get_install(self.win.setup.workbench())
+        if not install:
+            return None
+        return os.path.join(install.game_profile, *t["results"].split("/"))
+
+    def open_doc(self):
+        doc = self.tool().get("doc")
+        if doc:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(paths.bundle(), *doc.split("/"))))
+
+    def open_results(self):
+        d = self.results_folder()
+        if d and os.path.isdir(d):
+            open_folder(d)
+        else:
+            QMessageBox.information(self, APP, f"No results yet ({d or 'the game profile was not found'}).")
+
+    def copy_to_site(self):
+        src_rel, name = self.tool()["site_file"]
+        src = os.path.join(paths.REPO, *src_rel.split("/"))
+        site = self.site_data()
+        if not os.path.isfile(src):
+            QMessageBox.information(self, APP, f"There is no {src_rel} yet: run 'Fit and write {name}' first.")
+            return
+        if not site:
+            QMessageBox.warning(self, APP, "Set the field map folder (the one holding server.py) on the Data page.")
+            return
+        dst = os.path.join(site, name)
+        if QMessageBox.question(self, APP, f"Copy\n{src}\nover\n{dst}?") != QMessageBox.StandardButton.Yes:
+            return
+        shutil.copyfile(src, dst)
+        self.win.statusBar().showMessage(f"Copied to {dst}", 10000)
+
+    def start(self):
+        t, c, v = self.tool(), self.command(), self.values()
+        if any(o["kind"] == "shells" for o in c["opts"]) and not any(
+                v[i] for i, o in enumerate(c["opts"]) if o["kind"] == "shells"):
+            QMessageBox.information(self, APP, "Tick at least one shell.")
+            return
+        game = labs.runs_game(c, v)
+        if game:
+            blocking = [x for x in self.win.setup.blocking() if x["key"] in ("steam", "game", "steamrun", "gamerun")]
+            if blocking:
+                QMessageBox.warning(self, APP, "Fix these first (Setup page):\n\n" +
+                                    "\n".join(f"• {x['label']}: {x['hint'] or x['value']}" for x in blocking))
+                return
+            mins = f" It takes about {c['minutes']} minutes." if c["minutes"] else ""
+            if QMessageBox.question(self, APP, f"The game will open on screen and run by itself.{mins}\n\nLeave the "
+                                               "PC alone meanwhile. Start?") != QMessageBox.StandardButton.Yes:
+                return
+        args = labs.build(t, c, v)
+        label = f"{t['title']}: {c['label']}"
+        self.win.launch_script(args, label, game, self.results_folder() if t.get("results") or t.get("cwd") else None)
+
+
 # ------------------------------------------------------------------------------------------------ window
 class MainWindow(QMainWindow):
-    PAGES = [("setup", "1  Setup"), ("world", "2  World"), ("data", "3  Data"), ("run", "4  Run"), ("runs", "Runs")]
+    PAGES = [("setup", "1  Setup"), ("world", "2  World"), ("data", "3  Data"), ("run", "4  Run"), ("runs", "Runs"),
+             ("labs", "Labs")]
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP)
+        if os.path.isfile(ICON):
+            from PySide6.QtGui import QIcon
+            self.setWindowIcon(QIcon(ICON))
         self.resize(1100, 760)
         self.settings = QSettings("ReforgerMapTools", "ReforgerMapTools")
         self.worker = Worker(self)
@@ -710,7 +1014,9 @@ class MainWindow(QMainWindow):
         self.data = DataPage(self)
         self.run = RunPage(self)
         self.runs = RunsPage(self)
-        self.pages = {"setup": self.setup, "world": self.world, "data": self.data, "run": self.run, "runs": self.runs}
+        self.labs = LabsPage(self)
+        self.pages = {"setup": self.setup, "world": self.world, "data": self.data, "run": self.run, "runs": self.runs,
+                      "labs": self.labs}
 
         self.nav = QListWidget()
         self.nav.setFixedWidth(150)
@@ -759,6 +1065,10 @@ class MainWindow(QMainWindow):
             self.runs.load()
         if key == "data":
             self.data.update_plan()
+        if key == "labs":
+            for o, w in zip(self.labs.command()["opts"], self.labs.widgets):
+                if o["kind"] == "site" and not w.text().strip():
+                    w.setText(self.labs.site_data())
 
     def world_changed(self):
         self.data.world_changed(self.world.world())
@@ -825,6 +1135,19 @@ class MainWindow(QMainWindow):
         self.go("run")
         self.worker.start(args, self.data.out.text().strip() or paths.workspace(), self.setup.workbench())
 
+    def launch_script(self, args, title, game, folder):
+        """A Labs command: one step on the Run page, its progress from the game's heartbeat when it runs the game."""
+        if self.worker.running():
+            QMessageBox.information(self, APP, "Something is already running (Run page).")
+            self.go("run")
+            return
+        self.run.begin(title, resumable=False, folder=folder)
+        self.run.on_event({"t": "plan", "steps": [{"id": "lab", "label": title, "game": game}]})
+        self.run.on_event({"t": "step", "id": "lab", "state": "start"})
+        self.data.start.setEnabled(False)
+        self.go("run")
+        self.worker.start_script(args)
+
     def run_finished(self, code):
         self.run.finish(code)
         self.data.update_plan()
@@ -844,6 +1167,13 @@ def main(argv=None):
     app = QApplication(sys.argv if argv is None else argv)
     app.setApplicationName(APP)
     app.setStyle("Fusion")
+
+    def on_error(kind, value, tb):
+        # a bug in a button's handler: show it instead of losing it (pythonw has no console)
+        text = "".join(traceback.format_exception(kind, value, tb))
+        sys.__stderr__ and sys.__stderr__.write(text)
+        QMessageBox.critical(None, APP, "Something went wrong:\n\n" + text[-2000:])
+    sys.excepthook = on_error
     win = MainWindow()
     win.show()
     return app.exec()

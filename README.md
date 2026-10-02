@@ -4,14 +4,16 @@ Point `rmt.py` at any Arma Reforger map. It runs Arma Reforger Tools (Workbench)
 exports everything a map site needs, then bakes it into a site-ready data folder: roads, line-of-sight tiles, place
 names, satellite tiles and tree/bush data. Nothing in it is specific to one map.
 
-There is also a desktop app over the same tools: `python rmt_gui.py` (needs `pip install -r requirements.txt`; see
-[docs/gui.md](docs/gui.md)).
+There is also a desktop app over the same tools, the mortar, blast and rocket tests and the other scripts included:
+**double-click `Reforger Map Tools.bat`**. The first time, it sets up its own Python environment (`.venv\`) and
+installs what it needs; after that it just opens the window. Its Setup page can add a desktop and Start menu
+shortcut. See [docs/gui.md](docs/gui.md).
 
 This file is the quick start and the map of the folder. The detail is in `docs/`:
 
 | Doc | What it explains |
 |---|---|
-| [docs/gui.md](docs/gui.md) | The desktop app (`rmt_gui.py`): its pages, how it drives `rmt.py`, what is tested and what isn't |
+| [docs/gui.md](docs/gui.md) | The desktop app (`Reforger Map Tools.bat`, `rmt_gui.py`): starting it, its pages (Labs runs the other tools), how it drives `rmt.py`, what is tested and what isn't |
 | [docs/export-jobs.md](docs/export-jobs.md) | `rmt.py export`: every job, its settings, its raw output files, how retries and resume work |
 | [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts; then `rmt.py check` (scoring the line of sight) and `rmt.py fieldmap` (into the website, 2D and 3D) |
 | [docs/satellite-and-foliage.md](docs/satellite-and-foliage.md) | The two jobs that run in the game itself: how they work, how to tune them |
@@ -27,7 +29,8 @@ This file is the quick start and the map of the folder. The detail is in `docs/`
 - Windows, with Steam running.
 - Arma Reforger (Steam app 1874880) and Arma Reforger Tools (1874910) installed. `rmt.py` finds them through the
   Steam registry key and `libraryfolders.vdf`; `--workbench <exe>` overrides the Workbench path.
-- Python 3 (tried on 3.13) with `numpy` and `Pillow`. Exporting needs only the standard library; baking needs both.
+- Python 3 (tried on 3.13) with `numpy`, `Pillow`, and `scipy`. Exporting needs only the standard library; install
+  `requirements.txt` for baking and the desktop app. Foliage measurement requires SciPy and checks it before processing.
 - Workbench and the game **closed** while `rmt.py` runs (it refuses to start otherwise).
 - A mod map needs its addon downloaded from the Workshop (the game's `addons` folder is searched automatically).
 
@@ -104,7 +107,9 @@ first, and `satellite` needs the terrain export.
 | Path | What it is |
 |---|---|
 | `rmt.py` | The command line. Parses arguments; `bake`, `check`, `fieldmap`, `run` and `detect` logic. |
-| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)); `requirements.txt` lists what it and the bakers need |
+| `Reforger Map Tools.bat` | Double-click launcher for the desktop app: makes `.venv\`, installs `requirements.txt`, opens the window |
+| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `icon.ico`; `requirements.txt` lists what it and the bakers need |
+| `test_*.py` | Regression tests: `python -m unittest discover -p "test_*.py"` (or Labs → Self-test) |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
 | `rmtlib/addons.py` | Every installed addon and its worlds, from their resource databases; a world's mod dependencies |
 | `rmtlib/products.py` | What you ask for (roads, line of sight, ...) as export jobs and bake parts |
@@ -128,6 +133,7 @@ first, and `satellite` needs the terrain export.
 | `firetest.py` | Live mortar firing test: plan, fire in the game, score ([docs/firetest.md](docs/firetest.md)) |
 | `blasttest.py` | Live mortar blast test: who goes down or is hurt around a burst ([docs/firetest.md](docs/firetest.md)) |
 | `rockettest.py`, `rocketfit.py` | Live rocket flight test, and the flight and wind tables the site's rocket calculator reads ([docs/firetest.md](docs/firetest.md)) |
+| `launchertest.py` | Live launcher test: soldiers fire the real launchers to check sights, launch scatter and hits ([docs/firetest.md](docs/firetest.md)) |
 | `audible/` | Gunshot audibility from the game's sound files; separate scripts, run from that folder ([docs/audible.md](docs/audible.md)) |
 | `docs/` | The documentation listed above |
 

@@ -7,7 +7,7 @@ game) and [`rmt.py fieldmap`](#rmtpy-fieldmap-into-the-website) (the bake into t
 python rmt.py bake <world> [--parts roads,los,places,satellite,foliage,plants]
 ```
 
-Baking is plain Python (numpy and Pillow); it does not start Workbench or the game. It takes the **newest export** of
+Baking is plain Python (numpy, Pillow, and SciPy); it does not start Workbench or the game. It takes the **newest export** of
 the world (the most recently written `out/*/*/manifest.json` whose world, slug or file name matches what you typed)
 and writes `out/<slug>/<build>/site/`. Parts always run in the order `roads, los, places, satellite, foliage, plants`,
 whatever order you list them in. `--parts` default is all of them; a part whose input is missing prints a message and

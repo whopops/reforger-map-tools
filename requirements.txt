@@ -1,4 +1,5 @@
-# Export (rmt.py export) needs only the standard library. Baking needs numpy and Pillow; the desktop app needs PySide6.
+# Export needs only the standard library. Baking needs numpy, Pillow, and SciPy; the desktop app needs PySide6.
 numpy
 Pillow
+scipy
 PySide6

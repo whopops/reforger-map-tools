@@ -23,17 +23,21 @@ ADDON_GUID = "6A1F0C52D83E97B4"  # our addon
 REPO = paths.REPO
 
 
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # no console flashing up when the desktop app asks
+
+
 class JobFailed(Exception):
     pass
 
 
 def running(name_part):
-    out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True).stdout
+    out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                         creationflags=NO_WINDOW).stdout
     return [line.split(",")[1].strip('"') for line in out.splitlines() if name_part in line]
 
 
 def kill_tree(pid):
-    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, creationflags=NO_WINDOW)
 
 
 def close_crash_reporters(since):
@@ -42,7 +46,8 @@ def close_crash_reporters(since):
     ps = ("Get-Process CrashReporter -ErrorAction SilentlyContinue | "
           "Where-Object { $_.StartTime -ge [DateTimeOffset]::FromUnixTimeSeconds(%d).LocalDateTime } | "
           "ForEach-Object { $_.Id }" % int(since))
-    out = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True).stdout
+    out = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True,
+                         creationflags=NO_WINDOW).stdout
     pids = [p for p in out.split() if p.isdigit()]
     for pid in pids:
         kill_tree(pid)

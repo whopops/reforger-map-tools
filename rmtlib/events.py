@@ -137,3 +137,21 @@ def heartbeat(label, msg):
         elif p[1] == "plant" and "foliage" in _totals:
             total = _totals["foliage"]
             progress("export:foliage", total - _int(kv.get("left")), total, "plants")
+    elif k in ("fire", "blast") and len(p) > 1:
+        # the Labs tests (firetest.py, rockettest.py, blasttest.py): fire|setup|aims=N, fire|aim|id|left=K,
+        # blast|setup|trials=N, blast|trial|id|left=K. Each game run starts its own count.
+        unit = "aims" if k == "fire" else "trials"
+        if p[1] == "setup":
+            _totals[k] = _int(kv.get(unit))
+            progress("lab", 0, _totals[k], unit)
+        elif p[1] in ("aim", "trial") and k in _totals:
+            progress("lab", _totals[k] - _int(kv.get("left")), _totals[k], unit)
+    elif k in ("gun", "launcher") and len(p) > 1:
+        # gun|setup|aims=N, then gun|landed|id|round and gun|lost|id|round (launcher|fired / launcher|lost for
+        # launchertest.py): rounds per aim vary, so only a count
+        if p[1] == "setup":
+            _totals[k] = 0
+            progress("lab", 0, 0, "rounds")
+        elif p[1] in ("landed", "fired", "lost"):
+            _totals[k] = _totals.get(k, 0) + 1
+            progress("lab", _totals[k], 0, "rounds")

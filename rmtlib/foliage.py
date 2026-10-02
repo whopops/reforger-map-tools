@@ -310,6 +310,10 @@ def measure_top(row, src, debug_dir=None):
 
 def analyse(src, out_dirs=(), debug=20, log=print):
     """Measure every shot in src (the foliage folder with shots.csv) and write the results to src and out_dirs."""
+    try:
+        from scipy import ndimage  # check before per-shot errors can hide a missing dependency
+    except ImportError as e:
+        raise RuntimeError("Foliage baking requires SciPy. Install the project's requirements.txt first.") from e
     with open(os.path.join(src, "shots.csv"), encoding="utf8", newline="") as f:
         rows = list({r["id"]: r for r in csv.DictReader(f)}.values())  # a view shot again: keep the last
     per_kind, lines, bad = {}, [], 0
@@ -322,6 +326,8 @@ def analyse(src, out_dirs=(), debug=20, log=print):
                 top, ratio = measure_top(row, src, dbg)
             else:
                 slices, ratio, cmap = measure_side(row, src, dbg, row["kind"] == "bush" and band in MAP_BANDS)
+        except ImportError:
+            raise  # missing libraries affect the whole bake, not just this photograph
         except Exception as e:  # one bad shot shouldn't stop the rest
             bad += 1
             log(f"foliage: {row['id']}: skipped ({e})")

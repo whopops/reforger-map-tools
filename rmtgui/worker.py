@@ -14,11 +14,29 @@ from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, Signal
 from rmtlib import paths
 
 
+def _python():
+    """python.exe beside the running interpreter (the launcher starts the window with pythonw.exe, but the worker
+    should be a console program so its output pipes behave; Qt starts it without a console window)."""
+    exe = sys.executable
+    if os.path.basename(exe).lower() == "pythonw.exe":
+        console = os.path.join(os.path.dirname(exe), "python.exe")
+        if os.path.isfile(console):
+            return console
+    return exe
+
+
 def worker_command(args):
     """The command that runs rmt.py with these arguments: the packaged app re-launches itself with --worker."""
     if paths.FROZEN:
         return [sys.executable, "--worker", *args]
-    return [sys.executable, "-u", os.path.join(paths.REPO, "rmt.py"), *args]
+    return [_python(), "-u", os.path.join(paths.REPO, "rmt.py"), *args]
+
+
+def script_command(args):
+    """The command that runs a Labs script: rmt_gui.py --script/--module ... (see rmt_gui.run_script)."""
+    if paths.FROZEN:
+        return [sys.executable, *args]
+    return [_python(), "-u", os.path.join(paths.REPO, "rmt_gui.py"), *args]
 
 
 class Worker(QObject):
@@ -36,12 +54,19 @@ class Worker(QObject):
         return self.proc is not None and self.proc.state() != QProcess.ProcessState.NotRunning
 
     def start(self, args, workspace, workbench=None):
-        if self.running():
-            raise RuntimeError("a run is already going")
+        """rmt.py with these arguments."""
         glob_args = ["--events", "--workspace", workspace]
         if workbench:
             glob_args += ["--workbench", workbench]
-        cmd = worker_command(glob_args + list(args))
+        self._start(worker_command(glob_args + list(args)))
+
+    def start_script(self, args):
+        """A Labs script: args as rmtgui.labs.build gives them."""
+        self._start(script_command(list(args)))
+
+    def _start(self, cmd):
+        if self.running():
+            raise RuntimeError("a run is already going")
         self.cancelled = False
         self.proc = QProcess(self)
         env = QProcessEnvironment.systemEnvironment()
@@ -65,7 +90,8 @@ class Worker(QObject):
         self.cancelled = True
         pid = self.proc.processId()
         if pid:
-            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         self.proc.kill()
 
     def _read(self, channel):

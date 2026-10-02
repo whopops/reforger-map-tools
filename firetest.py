@@ -61,7 +61,8 @@ class Terrain:
     def __init__(self):
         d = os.path.join(SITE, 'maps', 'everon', 'los')
         self.dir = d
-        ix = json.load(open(os.path.join(d, 'index.json')))
+        with open(os.path.join(d, 'index.json')) as f:
+            ix = json.load(f)
         self.names = set(ix['tiles'])
         self.unit = ix['terrain']['unit']
         self.cache = {}
@@ -71,9 +72,11 @@ class Terrain:
         if name not in self.names:
             return None
         if name not in self.cache:
-            raw = gzip.open(os.path.join(self.dir, name + '.bin.gz')).read()
+            with gzip.open(os.path.join(self.dir, name + '.bin.gz')) as f:
+                raw = f.read()
             ter = struct.unpack_from('<%dH' % (501 * 501), raw, 0)
-            kind = raw[501 * 501 * 2 + 1000 * 1000: 501 * 501 * 2 + 2 * 1000 * 1000]
+            # Layout: terrain, top, bottom, kind, cover (as in los/index.json).
+            kind = raw[501 * 501 * 2 + 2 * 1000 * 1000: 501 * 501 * 2 + 3 * 1000 * 1000]
             self.cache[name] = (int(x // 500) * 500, int(z // 500) * 500, ter, kind)
         return self.cache[name]
 

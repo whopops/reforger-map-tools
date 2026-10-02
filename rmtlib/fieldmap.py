@@ -17,8 +17,8 @@ reads the very same files):
 and the map's entry in static/3d/maps.json (the maps the 3D view offers: title, size, grid, camera start, and the
 map's reference file of bases and caches when it has one, static/data/<id>.json).
 
-foliage_shots.csv, the raw measurements, is a working file and isn't copied. Files already there with the same size
-are left alone, so a re-run is quick.
+foliage_shots.csv, the raw measurements, is a working file and isn't copied. Files with identical contents are left
+alone; changed files are replaced even when their size and timestamps match.
 
 Tree colours: the foliage photos are taken against a bright hazy sky, which washes leaf colours out, so Everon's
 species table (static/data/maps/everon/trees/species.json) carries hand-tuned colours. Every kind in it keeps them, on
@@ -30,6 +30,7 @@ Port of arma-map's old everon-map/tools/import_map_data.py and everon-3d-map's o
 import json
 import os
 import shutil
+import filecmp
 
 from . import trees as tree_builder
 
@@ -50,9 +51,10 @@ def default_field_map(repo):
 
 
 def copy_tree(src, dst, base, log):
-    # only what changed: a file of the same size already there is left alone (so a re-run doesn't recopy the tiles)
+    # Binary exports often retain their size after changing; compare contents before skipping.
     def keep_new(s, d):
-        if os.path.isfile(d) and os.path.getsize(d) == os.path.getsize(s):
+        filecmp.clear_cache()  # repeated installs must not reuse an earlier stat-based comparison
+        if os.path.isfile(d) and filecmp.cmp(s, d, shallow=False):
             return d
         return shutil.copy2(s, d)
     shutil.copytree(src, dst, copy_function=keep_new, dirs_exist_ok=True)

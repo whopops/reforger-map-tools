@@ -82,10 +82,11 @@ def report(workbench_exe=None):
         out.append(_check("disk", "Free space for the output", "ok" if free > 20 else "warn", f"{free:.0f} GB on {probe}",
                           "" if free > 20 else "A large map (Everon) needs tens of GB of raw data."))
 
-    missing = [m for m in ("numpy", "PIL") if importlib.util.find_spec(m) is None]
+    missing = [m for m in ("numpy", "PIL", "scipy") if importlib.util.find_spec(m) is None]
     out.append(_check("python", "Python packages for baking", "fail" if missing else "ok",
-                      "missing " + ", ".join(missing) if missing else "numpy, Pillow",
-                      "pip install numpy pillow" if missing else ""))
+                      "missing " + ", ".join(missing) if missing else "numpy, Pillow, SciPy",
+                      "Start the app with \"Reforger Map Tools.bat\" (it installs them), or "
+                      "pip install -r requirements.txt" if missing else ""))
     return out
 
 

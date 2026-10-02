@@ -15,12 +15,13 @@ mod map) and starts the engine on it. Edit `addon/`, never `.build/`. `addon.gpr
 | `Scripts/WorkbenchGame/RMT/RMT_WorldJobs.c` | WorkbenchGame | Whole-world jobs: `roads`, `sightlines`, `names`. |
 | `Scripts/WorkbenchGame/RMT/RMT_FoliageTrace.c` | WorkbenchGame | The `foliagetrace` experiment. |
 | `Scripts/WorkbenchGame/RMT/RMT_BallisticsJob.c` | WorkbenchGame | The `ballistics` job ([firetest.md](firetest.md)). Accepted by the plugin but not listed in `rmt.py`. |
-| `Scripts/Game/RMT/RMT_GameHook.c` | Game | When the game starts with `-rmtSat`, `-rmtFoliage`, `-rmtFire`, `-rmtGun` or `-rmtBlast`, spawns the matching entity once the world is ready. |
+| `Scripts/Game/RMT/RMT_GameHook.c` | Game | When the game starts with `-rmtSat`, `-rmtFoliage`, `-rmtFire`, `-rmtGun`, `-rmtBlast` or `-rmtLauncher`, spawns the matching entity once the world is ready. |
 | `Scripts/Game/RMT/RMT_SatCapture.c` | Game | The satellite capture entity. |
 | `Scripts/Game/RMT/RMT_FoliageCapture.c` | Game | The foliage photograph entity. |
 | `Scripts/Game/RMT/RMT_FireTest.c` | Game | The mortar firing test entity, driven by `firetest.py` ([firetest.md](firetest.md)). |
 | `Scripts/Game/RMT/RMT_GunTest.c` | Game | The real-mortar firing test entity, driven by `firetest.py gun` ([firetest.md](firetest.md)). |
 | `Scripts/Game/RMT/RMT_BlastTest.c` | Game | The mortar blast test entity, driven by `blasttest.py` ([firetest.md](firetest.md)). |
+| `Scripts/Game/RMT/RMT_LauncherTest.c` | Game | The rocket launcher test entity (soldiers firing real launchers), driven by `launchertest.py` ([firetest.md](firetest.md)). |
 
 World entities must live in the **Game** script module, not WorkbenchGame (the editor never ran `_WB_AfterWorldUpdate`
 in command-line mode, and entities defined in WorkbenchGame were not found).
