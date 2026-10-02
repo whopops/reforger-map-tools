@@ -32,6 +32,16 @@
 | `plants: no foliage measurements in site/foliage` | Bake `--parts foliage` before `plants`. |
 | `no finished shots in <folder>` | The satellite folder has no picture with a matching `.txt`. |
 | Everything works but a few chunks look empty | Open-sea chunks are skipped on purpose. |
+| `check`: `no sight lines at <path>` | Run `python rmt.py export <world> --jobs sightlines` first. |
+| `check`: `no baked line of sight in <folder>` | Run `python rmt.py bake <world> --parts los` first. |
+| `check`: `bullets not scored (these tiles have no cover plane)` | The tiles were trimmed to four planes. Score a bake's own `site/` instead. |
+| `check`: agreement far below 95% | The sight lines and the tiles are from different worlds or builds (`--csv` and `--site` mixed up), or the bake is broken. |
+| `sightlines`: `nothing to do` or `no land found` | The world is under 400 m across, or has no ground 1 m above the water line inside its edge. |
+| `fieldmap`: `--to must be the field map's folder` | arma-map is not at `..\..\arma-map\everon-map` from this repo; pass `--to` the folder holding `server.py`. |
+| `fieldmap`: `no site id for <slug>` | A new map: pass `--as <id>`, add it to `MAPS` in the field map's `static/app.js` and `server.py`, and to `MAPS` in `rmtlib/fieldmap.py` (its 3D title and start). |
+| `fieldmap`: `<file> isn't in <site>` | Bake the missing part (`los`, `places`, `roads`, `foliage`, `plants`) first. |
+| `fieldmap`: `trees/: no entities export or foliage measurements` | The 3D trees weren't rebuilt (the rest was installed). Export `entities` and bake `foliage`, then rerun. |
+| `fieldmap`: `tuned colours for 0/N kinds` | The site's `static/data/maps/everon/trees/species.json` was missing, so every kind got plain greens. Restore it from arma-map's git history and rerun. |
 
 ## Checks you can do without running anything heavy
 
@@ -46,9 +56,13 @@ python -m rmtlib.pak list "Arland"   # proves the game paks are readable
 ## Not wired up or not finished
 
 - `foliagetrace` is an experiment and is not part of the pipeline.
+- The `sightlines` job is a port of the old Everon exporter's check and has not been run in Workbench yet; its scorer
+  (`rmt.py check`) was proven on the old Everon `check.csv`. Try it on Arland first.
 - The `.topo` sections `AREA`, `WATR` and `PWLN` are not decoded (forest outlines, water, power lines); `ROAD`,
   `BULD` and `HILL` are.
-- Doors, power lines and POIs are later work (PLAN.md phase 8).
+- Later work: doors, power lines and POIs. Nothing checks the 2.5 GB site-data budget yet ([bakers.md](bakers.md)).
+- Game updates can rename classes or materials; every export records its game build, so compare a new build's bake
+  with the last one's.
 - `Exporter.export` accepts `fresh=True` but `rmt.py` has no `--fresh` option; the function refuses unless you delete
   the raw folder yourself, since `rmt` never deletes exports.
 - Check Bohemia's content and licensing rules before hosting anything derived from the game's data publicly.

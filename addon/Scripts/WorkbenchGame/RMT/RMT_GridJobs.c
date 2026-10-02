@@ -1,5 +1,5 @@
-// Chunked jobs. Formats match the old Everon exporter (arma-map/everon-map/tools/workbench), so its bakers and
-// the everon-data export can be used to check these.
+// Chunked jobs. Formats match the old Everon exporter (arma-map's everon-map/tools/workbench, since removed; see its
+// git history), so the everon-data export it made can be used to check these.
 
 //------------------------------------------------------------------------------------------------
 // terrain/t_TX_TZ.csv: header "x0,z0,step,cols,rows", then one row per line from south to north, west to east,

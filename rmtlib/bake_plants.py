@@ -1,7 +1,7 @@
 """Every standing tree and bush on the map, and the 10 m foliage / clutter light layers, for the site.
 
-Port of arma-map/everon-map/tools/foliage_model.py and bake_light_foliage.py (the field map's "Visual" and "Light"
-line of sight), made map-independent and fed with this exporter's own measurements:
+Port of arma-map's everon-map/tools/foliage_model.py and bake_light_foliage.py (the field map's "Visual" and "Light"
+line of sight; both since removed from arma-map, see its git history), made map-independent and fed with this exporter's own measurements:
   - the plants come from the entities export (every standing tree / bush prefab, as foliage.plant_list picks them),
   - each kind's shape and see-through from the foliage job's close-up measurements (site/foliage/foliage_shots.csv),
   - the ground under each plant, the grid and the light size from the baked LOS tiles (site/los/index.json).

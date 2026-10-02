@@ -1,5 +1,8 @@
 # `rmt.py bake`: raw export to site data
 
+Also on this page: [`rmt.py check`](#rmtpy-check-scoring-the-line-of-sight) (how well the line of sight matches the
+game) and [`rmt.py fieldmap`](#rmtpy-fieldmap-into-the-website) (the bake into the website, its 2D and 3D views).
+
 ```bash
 python rmt.py bake <world> [--parts roads,los,places,satellite,foliage,plants]
 ```
@@ -23,7 +26,17 @@ All binary files are little endian and gzip-compressed with a zero timestamp, so
 byte-identical. Rows always run south to north and columns west to east. Coordinates are world metres: x east, z north.
 
 Size budget: the whole `site/` should stay under 2.5 GB, not counting `tiles/`. On Everon the baked field map is about
-157 MB, so the budget only matters on very large maps (PLAN.md section 7).
+157 MB, so the budget only matters on very large maps. Data grows with map area; at the same detail:
+
+| Map | Size | Area | Site data (projected) |
+|---|---|---|---|
+| Arland | ~4 km | 16 km² | ~0.02 GB |
+| Everon, Kolguyev | 12.8 km | 164 km² | ~0.2 GB |
+| A big community map | 20 km | 400 km² | ~0.5 GB |
+| The budget's limit | ~40 km | ~1,600 km² | 2.5 GB |
+
+Nothing enforces the budget yet. A map that would go over can bake its line of sight at 1 m instead of 0.5 m (a
+quarter of the size). Raw exports (several GB) stay on your PC and are never uploaded.
 
 ---
 
@@ -120,6 +133,66 @@ were not photographed are left out and counted in the log.
 - `light/foliage.bin.gz`: Uint8 per 10 m cell and height band (edges 0, 1, 2, 4, 7, 12, 20, 45 m): average foliage k,
   0 to 255 meaning 0 to 0.5 per metre.
 - `light/clutter.bin.gz`: Uint8 per cell and band: share filled by solid things, 0 to 255 meaning 0 to 100%.
+
+## `rmt.py check`: scoring the line of sight
+
+```bash
+python rmt.py check <world>                               # the newest export's sight lines against its site/los
+python rmt.py check --csv <check.csv> --site <folder>     # any sight lines against any site (a folder with los/)
+```
+
+Not a bake part: it reads the `sightlines` export ([export-jobs.md](export-jobs.md#sightlines)) and the baked `los/`
+tiles and prints how often they agree with the engine (`check_los.py`). Each line is walked through the tiles every
+0.25 m, leaving out 0.5 m at each end. The tiles call it blocked where the ground rises above it, or where it passes
+between the underside and top of a building, wall, rock, pole, tree or bush (not a see-through fence, as on the map);
+the engine calls it blocked when its ray stopped short. Also printed: the same for the bare terrain, for bullets
+(terrain and the `cover` plane, when the tiles have one), by distance, and what the engine hit where the tiles saw
+nothing (the likeliest gaps in the bake). About 10 s for 20,000 lines.
+
+On the 2026 Everon export (`everon-data/check.csv` against the field map's Everon tiles): objects and terrain agree
+95.0%, terrain alone 67.8%, bullets 91.5%; misses are mostly tree trunks and destructible props between the 0.5 m
+surface rays.
+
+## `rmt.py fieldmap`: into the website
+
+```bash
+python rmt.py fieldmap <world> [--to <arma-map/everon-map>] [--as <id>] [--tiles] [--photos]
+```
+
+Installs the newest bake of a world into the website (`fieldmap.py`, with the trees from `trees.py`): arma-map's
+`everon-map`, which serves the field map at `/` and its 3D view at `/3d/`. Both views read the same files, so each
+map's data is there once. Needs the `los`, `places`, `roads`, `foliage` and `plants` bakes, and for the trees the
+`entities` export.
+
+| Written (under `static/`) | From | Read by |
+|---|---|---|
+| `data/maps/<id>/los/` | `site/los/` | both (line of sight; the 3D view also draws its terrain and objects from them) |
+| `data/maps/<id>/light/` | `site/light/` | both (the 3D view uses `height`, `canopy`, `buildings`, `forest`) |
+| `data/maps/<id>/plants/`, `foliage.json`, `foliage/foliage_profiles.json` | `site/plants/`, `site/foliage.json`, `site/foliage/` | both (Measured line of sight; the 3D view's "Measured tree shapes" draws `foliage.json`'s `bins` and `plants`) |
+| `data/maps/<id>/roads.json`, `places.json` | `site/` | both (the 3D view turns them into its own forms as it loads) |
+| `data/maps/<id>/tiles/` | `site/tiles/` | the field map: satellite tiles, every map but Everon (whose come from the server's cache; `--tiles` copies them too) |
+| `data/maps/<id>/trees/` | the raw `objects/` and `site/foliage/` | the 3D view's shaped trees: `trees.py`, below |
+| `3d/maps.json` | `site/los/index.json` and the probe | the maps the 3D view offers: `{default, maps: {id: {title, world, tile, cols, rows, lightCols, lightCell, unit, start, hasTrees, poi?}}}`; `poi` is the map's reference file of bases and caches, `data/<id>.json`, when it has one |
+
+`--to` defaults to `arma-map/everon-map` beside this repo's folder; `--as` defaults to `everon`, `kolguyev` or
+`arland` from the world's slug. A new map needs a line in `MAPS` in `fieldmap.py` (its id, title and 3D camera start;
+`None` starts over the land chunk nearest the middle) and in `MAPS` in the field map's `app.js` and `server.py`.
+Files already there with the same size are skipped; the trees are rebuilt every time.
+
+**Trees** (`trees.py`). Every standing tree and bush in the entities export becomes an 8-byte record in
+`trees/<tx>_<tz>.bin.gz` (Uint16 x and z in cm from the chunk corner, then Uint8 species, yaw in 360/256°, height in
+0.25 m and crown radius in 0.1 m; gzip -9 with no name or time, so a rebuild is byte-identical). `trees/species.json`
+has one shape per kind: 7 rings from the ground up (two for the trunk, five for the crown), made from the close-up
+foliage measurements (the widest-slice outline, a trunk from the narrowest stem slice, kept within 1.2-3% of the
+height), and the page scales each tree by its own box. Stumps, fallen trunks and debris are left out. Its `format`
+(2) changes only when a field's meaning does; its `version` is a hash of everything written, so browsers refetch.
+
+**Tree colours.** The foliage photos are taken against a bright hazy sky, which washes leaf colours out, so the
+site's Everon tree table carries hand-tuned colours. `fieldmap` reads them from
+`static/data/maps/everon/trees/species.json` before rebuilding and gives every kind it knows the same colours, on
+every map (its `version` gets a `c` on the end). Other kinds get plain tree and bush greens, or `--photos` reads
+colours from the foliage photos in the game profile instead. Don't delete the Everon table: it is where the tuned
+colours live.
 
 ## Typical re-bake situations
 

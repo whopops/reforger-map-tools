@@ -1,7 +1,8 @@
 # The game-side jobs: `satellite` and `foliage`
 
 Both jobs run in the **real game** (`ArmaReforgerSteamDiag.exe`), not Workbench. Command-line Workbench never draws
-the world, so every screenshot it takes is black (PLAN.md, spike S3). The game is started with our addon, the world,
+the world, so every screenshot it takes is black (tried in edit mode and in game mode, with
+`MakeScreenshotRawData` and `System.MakeScreenshot`; see [troubleshooting.md](troubleshooting.md)). The game is started with our addon, the world,
 `-rmtSat 1` or `-rmtFoliage 1`, and `-rmtOut=$profile:...`. `RMT_GameHook.c` notices the flag and spawns the capture
 entity. The entity moves a camera frame by frame, so the renderer really draws between shots. When done it writes
 `satellite.status.json` or `foliage.status.json` and asks the game to close. `rmt.py` also closes it if it does not.
@@ -89,6 +90,10 @@ ViewGeometry and Vegetation layers) only hits trunks and branches, about 18% of 
 interpolates by viewer distance. Beyond about 200 m small bushes cover only a few pixels, so their numbers are rough
 there (the `px` value is the confidence). Rays are probably closer to what the AI sees; photographs are closer to
 what a player sees.
+
+Eight sides are enough: the old Everon measurements used 16, and their side-to-side spread was 0.06, with 8 sides
+landing within 0.008 of all 16. Those old photos were partly taken against distant land, which under-counted cover a
+little in the low slices; this job puts the plant 60 m up so everything behind it is sky.
 
 ### Tuning (`--set`)
 `FoliageWorld`, `FoliageLimit` (try `--set FoliageLimit=3` first), `FoliageSides`, `FoliageFov`, `FoliageLift`,

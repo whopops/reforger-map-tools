@@ -9,13 +9,12 @@ This file is the quick start and the map of the folder. The detail is in `docs/`
 | Doc | What it explains |
 |---|---|
 | [docs/export-jobs.md](docs/export-jobs.md) | `rmt.py export`: every job, its settings, its raw output files, how retries and resume work |
-| [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts |
+| [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts; then `rmt.py check` (scoring the line of sight) and `rmt.py fieldmap` (into the website, 2D and 3D) |
 | [docs/satellite-and-foliage.md](docs/satellite-and-foliage.md) | The two jobs that run in the game itself: how they work, how to tune them |
 | [docs/addon.md](docs/addon.md) | The Enforce scripts inside Workbench and the game, and the command-line contract between them and `rmt.py` |
 | [docs/firetest.md](docs/firetest.md) | The mortar tools: `firetest.py` (live-fire test) and the `ballistics` job |
 | [docs/audible.md](docs/audible.md) | `audible/`: how far gunshots are heard, from the game's sound files |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Hard rules, known failures and what to do about them |
-| [PLAN.md](PLAN.md) | Design, spike results and decisions |
 
 ## Requirements
 
@@ -33,6 +32,7 @@ python rmt.py worlds                          # list the 103 or so worlds Workbe
 python rmt.py export Arland                   # raw data: probe, mapdata, roads, names, entities, terrain, surface
 python rmt.py export Arland --jobs satellite  # satellite shots (runs the game, takes over the screen)
 python rmt.py bake Arland                     # raw data -> out/arland-a9806a/<build>/site/
+python rmt.py fieldmap Arland                 # site/ -> arma-map/everon-map (field map and 3D view)
 ```
 
 Start with the smallest map (Arland, about 4 km) to see the whole chain work before running Everon or Kolguyev.
@@ -48,6 +48,8 @@ file name (`Eden`). Names that match several worlds are rejected with the list o
 | `python rmt.py worlds [--refresh]` | Prints every world Workbench can see. Cached in `out/worlds.txt`; `--refresh` starts Workbench once to ask it again. |
 | `python rmt.py export <world> [options]` | Runs export jobs for one world. See [docs/export-jobs.md](docs/export-jobs.md). |
 | `python rmt.py bake <world> [--parts ...]` | Bakes the newest export of that world into site data. See [docs/bakers.md](docs/bakers.md). |
+| `python rmt.py check <world>` | Scores the baked line of sight against the engine's own sight lines (the `sightlines` job). See [docs/bakers.md](docs/bakers.md#rmtpy-check-scoring-the-line-of-sight). |
+| `python rmt.py fieldmap <world> [--to ...]` | Installs the newest bake into the website (`arma-map/everon-map`): the map data both its 2D and 3D views read, the 3D view's trees and its map list. See [docs/bakers.md](docs/bakers.md#rmtpy-fieldmap-into-the-website). |
 
 Global option: `--workbench <path to ArmaReforgerWorkbenchSteamDiag.exe>`.
 
@@ -64,6 +66,8 @@ export  --jobs probe,mapdata,roads,names,entities,terrain,surface     (Workbench
 export  --jobs satellite                                              (game, about 1-2 h on Everon)
 export  --jobs foliage                                                (game, about 100 s per plant kind)
 bake    (roads, los, places, satellite, foliage, plants)              (Python, no game needed)
+export  --jobs sightlines, then check                                 (optional: how well the tiles match the game)
+fieldmap                                                              (install the bake into the website, 3D trees too)
 ```
 
 Order rules: `probe` runs first in every export that includes it (it is in the default list), and `satellite` needs
@@ -78,6 +82,8 @@ first, and `satellite` needs the terrain export.
 | Raw data from the game jobs (`satellite`, `foliage`) | `<Documents>\My Games\ArmaReforger\profile\rmt\<slug>\<build>\satellite` and `...\foliage` |
 | Run record (`manifest.json`) and baked site data | `out/<slug>/<build>/` and `out/<slug>/<build>/site/` in this repo |
 | World list cache | `out/worlds.txt` |
+| Engine sight lines for `check` | `<raw folder>\sightlines\check.csv` |
+| The website's copy (`fieldmap`) | `arma-map\everon-map\static\data\maps\<id>\` and `static\3d\maps.json` (beside this repo's folder by default) |
 | Generated addon copy | `.build/` (rebuilt every run; do not edit) |
 
 `<slug>` is the world's file name in lower case plus the first six characters of its GUID (`arland-a9806a`);
@@ -88,13 +94,16 @@ first, and `satellite` needs the terrain export.
 
 | Path | What it is |
 |---|---|
-| `rmt.py` | The only command you run. Parses arguments, `bake` logic. |
+| `rmt.py` | The only command you run. Parses arguments, `bake`, `check` and `fieldmap` logic. |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
 | `rmtlib/workbench.py` | Builds the addon, launches Workbench or the game, supervises it through its log |
 | `rmtlib/steam.py` | Finds Steam, the game, Tools, profiles and logs; reads build ids |
 | `rmtlib/bake_roads.py` | Baker: `roads.json` (uses `rmtlib/topo.py`) |
 | `rmtlib/topo.py` | Reader for BI's `.topo` map-geometry file (decoded by hand) |
 | `rmtlib/bake_los.py` | Baker: line-of-sight tiles and 10 m light grids |
+| `rmtlib/check_los.py` | `rmt.py check`: scores the line-of-sight tiles against the engine's sight lines |
+| `rmtlib/fieldmap.py` | `rmt.py fieldmap`: installs a bake into the website (field map and 3D view) |
+| `rmtlib/trees.py` | The website's 3D trees: per-chunk tree records and the species shapes (used by `fieldmap`) |
 | `rmtlib/bake_places.py` | Baker: `places.json` (uses `rmtlib/pak.py` for the game's string table) |
 | `rmtlib/satellite.py` | Baker: corrects the game's shots and cuts the tile pyramid |
 | `rmtlib/foliage.py` | Plant list for the foliage job, photo conversion, and the photo analysis |
@@ -107,7 +116,12 @@ first, and `satellite` needs the terrain export.
 
 Which data came from which tool: `everon-data/mortar/` from `firetest.py`, `everon-data/sound/` from `audible/`, and
 new exports of any map from `rmt.py`. The first Everon export (`everon-data/` terrain, objects, surface, roads,
-foliage) came from older tools that live in the `arma-map` repo (`everon-map/tools`) and are replaced by `rmt.py`.
+foliage, `check.csv`) came from older tools that were in the `arma-map` repo (`everon-map/tools`); `rmt.py` replaced
+them and they have been removed (they are in that repo's git history). arma-map holds only what runs the website
+(the field map and, at `/3d/`, its 3D view, which used to be the separate everon-3d-map); all the tooling that makes
+its data lives here. `rmt.py fieldmap` replaces arma-map's old `tools/import_map_data.py` and everon-3d-map's old
+`tools/import_rmt.py`, `tools/import_field_map.py` and `tools/build_trees.py` (both repos' git history keeps the
+originals).
 
 ### `pak.py`: read the game's own files
 

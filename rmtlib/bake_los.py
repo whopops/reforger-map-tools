@@ -1,6 +1,7 @@
 """Line-of-sight tiles and the 10 m "light" grids, from the terrain, entities and surface jobs.
 
-Port of arma-map/everon-map/tools/bake_los.py (proven on Everon), made map-independent: the chunk grid, its origin,
+Port of arma-map's everon-map/tools/bake_los.py (proven on Everon; since removed from arma-map, see its git
+history), made map-independent: the chunk grid, its origin,
 the height unit and the light-grid size all come from the export's probe.json.
 
 Output (site/los/):

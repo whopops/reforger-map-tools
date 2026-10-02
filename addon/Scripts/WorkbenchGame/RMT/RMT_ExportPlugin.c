@@ -1,7 +1,7 @@
 // Reforger Map Tools: command-line export plugin. rmt.py starts Workbench with
 //   -wbModule=WorldEditor -plugin=RMT_ExportPlugin -rmtJob=<job>[,<job>...] -rmtOut=$profile:<folder>
 //   [-rmtWorld=<world .ent>] [-rmtTile=500] [-rmtStep=<m>] [-rmtRegion=tx0,tz0,tx1,tz1] [-rmtMaxChunks=N]
-// Jobs: worlds (alone), or any of probe, mapdata, roads, names, entities, terrain, surface, foliagetrace, ballistics - run one after
+// Jobs: worlds (alone), or any of probe, mapdata, roads, names, entities, terrain, surface, sightlines, foliagetrace, ballistics - run one after
 // another on a single load of the world. Each writes <job>.status.json when it finishes, so after a crash rmt.py
 // relaunches with only the jobs still to do (and the chunk jobs skip their finished chunks).
 // The satellite pictures are taken in the game, not here (command-line Workbench does not draw the world).
@@ -48,7 +48,7 @@ class RMT_ExportPlugin : WorkbenchPlugin
 		m_Ctx.m_sJob.Split(",", jobs, true);
 		foreach (string job : jobs)
 		{
-			if (job != "probe" && job != "mapdata" && job != "roads" && job != "names" && job != "entities" && job != "terrain" && job != "surface" && job != "foliagetrace" && job != "ballistics")
+			if (job != "probe" && job != "mapdata" && job != "roads" && job != "names" && job != "entities" && job != "terrain" && job != "surface" && job != "sightlines" && job != "foliagetrace" && job != "ballistics")
 			{
 				Finish(2, "unknown job " + job);
 				return;
@@ -98,6 +98,11 @@ class RMT_ExportPlugin : WorkbenchPlugin
 		{
 			ref RMT_NamesJob names = new RMT_NamesJob(m_Ctx);
 			return names.Run();
+		}
+		if (job == "sightlines")
+		{
+			ref RMT_SightLinesJob sight = new RMT_SightLinesJob(m_Ctx);
+			return sight.Run();
 		}
 		if (job == "ballistics")
 		{

@@ -9,7 +9,7 @@ view. The camera is a standing player's eye (1.7 m above the plant's base), so w
 distant land; the shown/hidden pair tells the plant from it. Physics rays
 can't do this: every ray setting the engine has goes through leaves and only hits trunks and branches.
 
-Side views (port of arma-map/everon-map/tools/measure_foliage.py, unchanged method): the plant is cut into 0.5 m
+Side views (port of arma-map's old everon-map/tools/measure_foliage.py, unchanged method): the plant is cut into 0.5 m
 slices by height above its base; per slice, cover = share of the plant's outline that blocks the view, and
 k = how fast it blocks sight per metre crossed (cover = 1 - e^(-k * width), taking the plant as deep as it is wide).
 Top view (new): the crown from straight below, against the sky: its width and the share of it that blocks.

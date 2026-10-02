@@ -12,7 +12,7 @@ python rmt.py export <world> [--jobs a,b,c] [--tile 500] [--region tx0,tz0,tx1,t
    `out/worlds.txt` (made by `rmt.py worlds`). The run's name is `<slug>/<build>`.
 2. **Open the run record**, `out/<slug>/<build>/manifest.json`. If it exists the run resumes inside it.
 3. **Run the Workbench jobs** (`probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`,
-   `foliagetrace`) in **one Workbench launch**, one load of the world, in the order given.
+   `sightlines`, `foliagetrace`) in **one Workbench launch**, one load of the world, in the order given.
 4. After each launch, read every job's `<job>.status.json`. Jobs whose status is `done` or `partial` are recorded;
    the rest are relaunched together (up to `--retries` launches). Chunk jobs skip chunks that already have an `.ok`
    marker, so only the chunk in progress is lost after a crash.
@@ -20,8 +20,8 @@ python rmt.py export <world> [--jobs a,b,c] [--tile 500] [--region tx0,tz0,tx1,t
    [satellite-and-foliage.md](satellite-and-foliage.md)).
 6. Print `done`, or `FAILED: <jobs>  (rerun the same command to resume)` and exit 1.
 
-Default jobs: `probe,mapdata,roads,names,entities,terrain,surface`. `satellite`, `foliage` and `foliagetrace` are
-accepted by `--jobs` but are not in the default list.
+Default jobs: `probe,mapdata,roads,names,entities,terrain,surface`. `sightlines`, `satellite`, `foliage` and
+`foliagetrace` are accepted by `--jobs` but are not in the default list.
 
 ### Supervision
 
@@ -49,7 +49,8 @@ All Workbench jobs write under the Workbench profile: `...\profile\rmt\<slug>\<b
 Loads the world and records map bounds, the chunk grid and the editor entity count. Fails fast (exit 3) if the world
 does not load. Everything else depends on it: it is how no map size is hardcoded.
 Output: `probe.json`, `{"world", "min": [x,y,z], "max": [x,y,z], "tile", "cols", "rows", "editorEntities"}`.
-Arland: 4096 m, 9x9 chunks, about 173k entities, loads in about 3 s. Everon (`Eden`): 12800 m, about 1.2M entities.
+Arland: 4096 m, 9x9 chunks, about 173k entities, loads in about 3 s. Everon (`Eden`): 12800 m, about 1.2M entities,
+about 10 s. Kolguyev (`Cain`): 12800 m, about 1.4M entities, about 10 s.
 
 ### `mapdata`
 BI's own 2D-map export (`MapDataExporter`, the same calls as BI's `WorldDataExport` plugin): roads, power lines,
@@ -93,9 +94,21 @@ Rays over every spot an object covers, for roofs, canopy and bullet stops (the s
 with heights in decimetres above the ground; `kind` 1 building, 2 other solid, 3 vegetation. Cells not listed are
 open ground or water. Default step 0.5 m.
 
+### `sightlines`
+The accuracy check for the line of sight: 20,000 random sight lines fired by the engine itself, which `rmt.py check`
+scores the baked `los/` tiles against (see [bakers.md](bakers.md#rmtpy-check-scoring-the-line-of-sight)). Observers
+crouch (eyes 1 m) or, three times in ten, sit in a vehicle (2 m); targets stand (chest 1.5 m); 10 m to 1 km apart on
+a log scale; both ends on land (ground 1 m or more above the water line) and 200 m or more inside the terrain's edge.
+Two rays per line: one that stops on anything and one that stops only on what stops bullets. The seed is fixed, so
+the same world gives the same lines. A few seconds of work. Output: `sightlines/check.csv`:
+`ox,oz,og,eye,tx,tz,tg,target,dist,frac_all,hit_all,frac_bullet` (`frac_*` how far along each ray got, 1 = clear;
+`hit_all` the class of what stopped the first ray). Port of the old Everon exporter's "Check: sight lines" (its 2026
+Everon run is `everon-data/check.csv`).
+
 ### `foliagetrace` (experiment)
 Fires level rays through a sample of plants of each kind with every ray setting the engine has, to test whether rays
-could replace the foliage photographs. They cannot (see PLAN.md section 7b). Output: `foliagetrace/rays.csv`
+could replace the foliage photographs. They cannot (see "Why photographs" in
+[satellite-and-foliage.md](satellite-and-foliage.md#why-photographs)). Output: `foliagetrace/rays.csv`
 (`prefab,kind,height,band,config,rays,hits`). Not part of the pipeline.
 
 ### `satellite` and `foliage`
@@ -115,6 +128,7 @@ Passed to the plugin as `-rmtNAME=VALUE`. Only the first group is read by Workbe
 | Setting | Job | Default | Meaning |
 |---|---|---|---|
 | `Step` | `terrain`, `surface` | 1 and 0.5 | Sample spacing in metres (minimum 0.25). Smaller means larger files and longer runs. |
+| `SightLines` | `sightlines` | 20000 | How many sight lines to fire. |
 | `FtPerKind` | `foliagetrace` | 4 | Plants tested per kind. |
 | `SatSpan` | `satellite` | 400 | Ground square covered per shot, metres. |
 | `SatFov` | `satellite` | 15 | Lens angle in degrees. |
@@ -154,9 +168,13 @@ python rmt.py export Arland --jobs probe,terrain --region 1,1,2,2
 # a mod map from disk
 python rmt.py export "C:\Users\me\Documents\My Games\ArmaReforger\addons\MyMap\worlds\MyMap.ent"
 
+# the line-of-sight accuracy check (after a los bake): fire the engine's sight lines, then score the tiles
+python rmt.py export Arland --jobs sightlines
+python rmt.py check Arland
+
 # satellite at a closer lens, test spot only
 python rmt.py export Arland --jobs probe,satellite --set SatCenters=2048,2048 --set SatSpan=200
 ```
 
-Estimated time on Everon (from PLAN.md): the satellite capture is about 1,100 shots, roughly 1 to 2 hours;
+Estimated time on Everon: the satellite capture is about 1,100 shots, roughly 1 to 2 hours;
 `surface` is the slowest Workbench job. Always time Arland first.

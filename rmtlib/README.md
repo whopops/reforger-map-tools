@@ -10,9 +10,12 @@ someone reading or changing the code.
 rmt.py
  |- export.py ---- workbench.py ---- steam.py        export: launch Workbench / the game, watch, keep a manifest
  |     '- foliage.py                                  (plant list + photo conversion while the foliage job runs)
- '- bake_*.py, satellite.py, foliage.py              bake: raw export -> site data
-       |- topo.py                                     (BI's .topo reader, used by bake_roads)
-       '- pak.py                                      (game pak reader, used by bake_places)
+ |- bake_*.py, satellite.py, foliage.py              bake: raw export -> site data
+ |     |- topo.py                                     (BI's .topo reader, used by bake_roads)
+ |     '- pak.py                                      (game pak reader, used by bake_places)
+ |- check_los.py                                      check: baked los/ tiles vs the engine's sight lines
+ '- fieldmap.py ---- trees.py                         fieldmap: site data + entities -> the website (arma-map's
+                                                      field map and its 3D view)
 ```
 
 Exporters never import bakers and bakers never launch the game. The only thing they share is the raw folder layout
@@ -76,6 +79,23 @@ described in [../docs/export-jobs.md](../docs/export-jobs.md).
 | `bake_plants.py` | `foliage.json`, `plants/`, light foliage and clutter | needs the `los` and `foliage` bakes first |
 | `satellite.py` | `tiles/` | `build(shots_dir, terrain_raw, out_dir)`; `mosaic(...)` renders one test picture of a box |
 | `foliage.py` | `foliage/` | `analyse(src, out_dirs)` is the baker |
+
+### `check_los.py`: `rmt.py check`
+Not a baker: `score(check_csv, site, log)` walks every engine sight line from the `sightlines` job through the baked
+`los/` tiles (`Tiles` loads them as needed, newest 48 kept) and prints how often they agree with the engine, for
+objects and terrain, the bare terrain and bullets (`cover` plane). Returns the three shares.
+
+### `fieldmap.py` and `trees.py`: `rmt.py fieldmap`
+- `fieldmap.install(manifest, site, field_map, map_id, tiles, photos, log)`: one world's bake into the website:
+  the files into `<field_map>/static/data/maps/<map_id>/` (the field map and its 3D view read the same ones), the 3D
+  view's trees into its `trees/`, and the map's entry in `<field_map>/static/3d/maps.json` (`map_entry`).
+  `MAPS` maps world slugs to the site's map id, title and 3D camera start (`MAP_IDS` is just the ids);
+  `default_field_map(repo)` finds `arma-map/everon-map` beside the repo's folder. `tuned_colours` reads the
+  hand-tuned tree colours from the site's Everon tree table before the trees are rebuilt, and `build_trees` puts them
+  back.
+- `trees.build(objects, foliage, out, photos, log)`: the tree tiles and `species.json` (`rings_for` makes each kind's
+  shape, `photo_colours` the optional colours). Byte-identical to everon-3d-map's old `build_trees.py` it was
+  ported from.
 
 `foliage.py` is also used while exporting: `plant_list(raw, out_csv, limit)` writes the list of plants to photograph,
 and `bmp_to_png(folder)` converts the game's screenshots as they arrive.

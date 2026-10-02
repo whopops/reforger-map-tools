@@ -12,7 +12,7 @@ mod map) and starts the engine on it. Edit `addon/`, never `.build/`. `addon.gpr
 | `Scripts/WorkbenchGame/RMT/RMT_ExportPlugin.c` | WorkbenchGame | The plugin. Reads the command line, loads the world, runs the jobs in order, returns the exit code. Also holds the `probe`, `mapdata` and `worlds` jobs. |
 | `Scripts/WorkbenchGame/RMT/RMT_Context.c` | WorkbenchGame | Shared state: arguments, the loaded world, terrain bounds, chunk grid, region and chunk limits; `.ok` markers; status files; one-level-at-a-time folder creation. Also the base class of the chunk jobs. |
 | `Scripts/WorkbenchGame/RMT/RMT_GridJobs.c` | WorkbenchGame | Chunk jobs: `terrain`, `entities`, `surface`. |
-| `Scripts/WorkbenchGame/RMT/RMT_WorldJobs.c` | WorkbenchGame | Whole-world jobs: `roads`, `names`. |
+| `Scripts/WorkbenchGame/RMT/RMT_WorldJobs.c` | WorkbenchGame | Whole-world jobs: `roads`, `sightlines`, `names`. |
 | `Scripts/WorkbenchGame/RMT/RMT_FoliageTrace.c` | WorkbenchGame | The `foliagetrace` experiment. |
 | `Scripts/WorkbenchGame/RMT/RMT_BallisticsJob.c` | WorkbenchGame | The `ballistics` job ([firetest.md](firetest.md)). Accepted by the plugin but not listed in `rmt.py`. |
 | `Scripts/Game/RMT/RMT_GameHook.c` | Game | When the game starts with `-rmtSat`, `-rmtFoliage` or `-rmtFire`, spawns the matching entity once the world is ready. |
@@ -37,12 +37,13 @@ Addon" dialog blocks forever). `rmt.py` does this.
 
 | Argument | Meaning |
 |---|---|
-| `-rmtJob` | One job or a comma list: `probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`, `foliagetrace`, `ballistics`; or `worlds` on its own. Unknown name: exit 2 before anything is loaded. |
+| `-rmtJob` | One job or a comma list: `probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`, `sightlines`, `foliagetrace`, `ballistics`; or `worlds` on its own. Unknown name: exit 2 before anything is loaded. |
 | `-rmtOut` | Output folder, always `$profile:<relative path>`. Required. |
 | `-rmtWorld` | World resource (`{GUID}worlds/.../x.ent`). Required for every job except `worlds`. |
 | `-rmtTile` | Chunk size in metres (default 500, minimum 10). |
 | `-rmtStep` | Sample spacing for `terrain` (default 1) and `surface` (default 0.5), minimum 0.25. |
 | `-rmtRegion`, `-rmtMaxChunks` | Chunk window (inclusive) and a cap on new chunks per job; for tests. |
+| `-rmtSightLines` | `sightlines`: how many lines (default 20000). |
 | `-rmtFtPerKind` | `foliagetrace` plants per kind. |
 
 The game is started as:

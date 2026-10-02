@@ -11,7 +11,7 @@ import time
 from .workbench import REPO, JobFailed, Workbench, read_status
 
 JOBS = ["probe", "mapdata", "roads", "names", "entities", "terrain", "surface"]
-ALL_JOBS = JOBS + ["satellite", "foliage", "foliagetrace"]
+ALL_JOBS = JOBS + ["sightlines", "satellite", "foliage", "foliagetrace"]
 CHUNK_JOBS = {"entities": "objects", "terrain": "terrain", "surface": "surface"}
 
 
