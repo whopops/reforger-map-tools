@@ -16,9 +16,11 @@ import shutil
 import subprocess
 import time
 
+from . import events, paths
+
 GAME_GUID = "58D0FB3206B6F859"   # ArmaReforger.gproj
 ADDON_GUID = "6A1F0C52D83E97B4"  # our addon
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = paths.REPO
 
 
 class JobFailed(Exception):
@@ -48,10 +50,10 @@ def close_crash_reporters(since):
 
 
 def build_addon(extra_guids=()):
-    """Our addon in <repo>/.build/ReforgerMapTools, depending on the game and on any mod addons a world needs.
-    Built fresh each run so the committed addon never changes."""
-    src = os.path.join(REPO, "addon")
-    root = os.path.join(REPO, ".build")
+    """Our addon in <repo>/.build/ReforgerMapTools (see rmtlib/paths.py), depending on the game and on any mod
+    addons a world needs. Built fresh each run so the committed addon never changes."""
+    src = paths.addon_source()
+    root = paths.build_root()
     dst = os.path.join(root, "ReforgerMapTools")
     if os.path.isdir(dst):
         shutil.rmtree(dst)
@@ -61,6 +63,32 @@ def build_addon(extra_guids=()):
         f.write('GameProject {\n ID "ReforgerMapTools"\n GUID "%s"\n TITLE "Reforger Map Tools - export"\n'
                 ' Dependencies {\n%s\n }\n Configurations {\n  GameProjectConfig PC {\n  }\n }\n}\n' % (ADDON_GUID, deps))
     return root, os.path.join(dst, "addon.gproj")
+
+
+def _backup_path(game_profile):
+    return os.path.join(game_profile, "rmt", "video-settings-backup.json")
+
+
+def _write_backup(game_profile, saved):
+    path = _backup_path(game_profile)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf8") as f:
+        json.dump([{"path": p, "text": t} for p, t in saved], f)
+
+
+def restore_video_settings(game_profile, log=print):
+    """Put back the game's screen settings if a foliage run was killed before it could. Returns how many files."""
+    path = _backup_path(game_profile)
+    if not os.path.isfile(path):
+        return 0
+    with open(path, encoding="utf8") as f:
+        saved = json.load(f)
+    for item in saved:
+        with open(item["path"], "w", encoding="utf8", newline="") as f:
+            f.write(item["text"])
+    os.remove(path)
+    log(f"restored the game's screen settings from an interrupted run ({len(saved)} file(s))")
+    return len(saved)
 
 
 def read_status(path):
@@ -122,6 +150,7 @@ class Runner:
                             msg = text[text.index("RMT|") + 4:]
                             lines.append(msg)
                             last_beat = time.time()
+                            events.heartbeat(job, msg)
                             # chunk lines: one in 25, and the last
                             if not msg.startswith("chunk|") or msg.endswith("|left=0") or len(lines) % 25 == 0:
                                 self.log(f"  [{job}] {msg}")
@@ -191,6 +220,8 @@ class Runner:
                flag, "1", f"-rmtOut=$profile:{out_rel}"]
         cmd += ["-nosplash"] if screen else ["-window", "-nosplash"]
         cmd += list(args)
+        # a run killed half way (the GUI's Cancel kills the whole process tree) left the screen settings changed
+        restore_video_settings(self.install.game_profile, self.log)
         saved = []
         if screen:
             import re
@@ -202,9 +233,10 @@ class Runner:
                 for key, value in (("WindowMode", mode), ("ScreenWidth", width), ("ScreenHeight", height),
                                    ("WindowPosX", 0), ("WindowPosY", 0)):
                     text = re.sub(r"(?m)^(\s*%s )\S+" % key, lambda m: f"{m.group(1)}{value}", text)
+                saved.append((path, original))
+                _write_backup(self.install.game_profile, saved)
                 with open(path, "w", encoding="utf8", newline="") as f:
                     f.write(text)
-                saved.append((path, original))
         try:
             return self._supervise(job, cmd, self.install.game_dir, self.install.game_logs, status, stall, limit,
                                    finish_on_status=True)
@@ -212,6 +244,8 @@ class Runner:
             for path, original in saved:
                 with open(path, "w", encoding="utf8", newline="") as f:
                     f.write(original)
+            if saved:
+                os.remove(_backup_path(self.install.game_profile))
 
 
 Workbench = Runner  # older name

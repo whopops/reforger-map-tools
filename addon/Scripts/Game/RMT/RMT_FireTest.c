@@ -15,6 +15,8 @@
 //   horizon; wspeed, wdir: wind for the weather manager's override (m/s, and the engine's direction in degrees; the
 //   game's map shows this direction + 180); count: rounds to fire; tx,tz: the target, only to report its ground height.
 //   Aims whose id starts with T also have every frame of every round's flight written to traj.csv.
+//   An optional 13th column, y: launch from that height above the sea instead of the muzzle above the ground (rocketest.py
+//   flies rockets high over open water this way, and takes their flight from traj.csv).
 // Lines with the same wind should be together: the wind is changed only when no shell is in the air.
 // shots.csv: id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z
 //   (v0: the round's velocity just after launch, which includes the game's random speed variation)
@@ -158,6 +160,9 @@ class RMT_FireTestEntity : GenericEntity
 		float el = row[6].ToFloat() * Math.DEG2RAD;
 		vector dir = Vector(Math.Sin(az) * Math.Cos(el), Math.Sin(el), Math.Cos(az) * Math.Cos(el));
 		vector start = Vector(x, GetWorld().GetSurfaceY(x, z) + MUZZLE, z);
+		// an optional 13th column: launch from this height above the sea instead (rockets flown high over open water)
+		if (row.Count() > 12 && row[12] != "")
+			start[1] = row[12].ToFloat();
 
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;

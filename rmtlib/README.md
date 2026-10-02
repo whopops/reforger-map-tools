@@ -23,6 +23,18 @@ described in [../docs/export-jobs.md](../docs/export-jobs.md).
 
 ## Modules
 
+### For the desktop app and `rmt.py run` (see [../docs/gui.md](../docs/gui.md))
+- `paths.py`: `workspace()` (manifests and site data; `out/` by default, `--workspace` to change), `build_root()` and
+  `addon_source()` (repo, or `%LOCALAPPDATA%` and the bundle when packaged).
+- `events.py`: `enable()`, `emit(kind, **fields)`, `step`, `progress`, and `heartbeat(label, msg)`, which turns the
+  engine's `RMT|` lines into progress (called from `workbench._supervise`). Does nothing until enabled.
+- `addons.py`: `installed(install)` (every addon with its GUID, title and dependencies), `list_worlds(install)`,
+  `find_world(install, arg)` -> `(resource, addon GUIDs, addon folders)`, read from `resourceDatabase.rdb`.
+  `Exporter.resolve` tries it before `worlds.txt`.
+- `products.py`: `PRODUCTS`, `plan(selected, install)` -> jobs, bake parts and the step list.
+- `detect.py`: `report(workbench_exe)` -> the Setup checks; `ready(checks)`.
+- `workbench.restore_video_settings(game_profile)`: puts back the game's screen settings after a killed foliage run.
+
 ### `steam.py`: where everything is installed
 - `steam_root()`, `libraries()`: Steam path from the registry and the library folders from `libraryfolders.vdf`.
 - `app(appid)`: `(install folder, build id)` of an installed Steam app.

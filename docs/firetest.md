@@ -1,12 +1,13 @@
-# Mortar tools: `firetest.py`, `blasttest.py` and the `ballistics` job
+# Mortar and rocket tools: `firetest.py`, `blasttest.py`, `rockettest.py` and the `ballistics` job
 
-Three tools check the field map's mortar calculator against the engine itself. They produce the data in
-`everon-data/mortar/`.
+These tools check the field map's mortar and rocket calculators against the engine itself. They produce the data in
+`everon-data/mortar/` and `everon-data/rockets/`.
 
 | Tool | Runs in | What it gives you |
 |---|---|---|
 | `firetest.py` (with `RMT_FireTest.c`) | the game | Real shells fired and where they landed, scored against the site's firing solution |
 | `blasttest.py` (with `RMT_BlastTest.c`) | the game | Real shells dropped among soldiers: who goes down or is hurt at each distance (the site's kill and danger zones) |
+| `rockettest.py` (with `RMT_FireTest.c`) and `rocketfit.py` | the game | The game's shoulder-fired rockets flown in still air and wind, every frame recorded: the site's rocket calculator (`rockets.json`) |
 | `ballistics` job (`RMT_BallisticsJob.c`) | Workbench | The engine's own predicted shell flight for a grid of aims (a reference table, nothing is fired) |
 
 ---
@@ -68,7 +69,8 @@ python firetest.py score [folder]       # report on the last run, or on a copy o
 Keep `SHELLS`, `MUZZLE_H`, `SPEED_SD`, `BARREL` and `P90` at the top of `firetest.py` in step with `app.js`.
 
 ### Output (`<game profile>\rmt\firetest\firetest\`)
-- `plan.csv`: `id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz`
+- `plan.csv`: `id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz`, and optionally `y`: launch from that height
+  above the sea instead of the muzzle on the ground (`rockettest.py` uses it)
 - `plan.json`: the same plus what the site's solver gave (weapon, shell, ring, distance, height difference, map
   azimuth, wind-from, time of flight, predicted spread, probe flag).
 - `shots.csv`: `id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z`
@@ -236,6 +238,67 @@ How a character's armour and hit zones take that isn't in the files, hence the t
   `health` and `min_zone` (the worst hit zone) run from 0 to 1.
 - `summary.json` (from `score`): per shell, stance and setting, the fitted distances in metres
 - `..\blasttest.status.json`
+
+---
+
+## `rockettest.py`: live rocket flight test
+
+How the game's rockets fly, wind included. The field map's **Rocket launcher shot** (sight mark, hold and aim bearing)
+reads these flights; it doesn't model the rockets, because the engine's `MissileMoveComponent` physics are native.
+
+```bash
+python rockettest.py plan                # write the plans (one per wind) into the game profile
+python rockettest.py run                 # plan, then one game run per wind; about 20 minutes. Rerun to finish a broken run
+python rockettest.py score [folder]      # report, and write out/rockets.json for the site
+```
+
+### Requirements
+Steam running and the game closed, as for `firetest.py`. It uses the site's Everon terrain to find open sea.
+
+### What it does
+1. **Plan.** Six rockets (`ROCKETS`: PG-7VM, PG-7VL, PG-7VR, M72A3, PG-22, RPG-75), each at 11 elevations (`ELEVS`,
+   -12° to 20°), in five winds (`WINDS`: still air three times over, 10 and 5 m/s from the right, 10 m/s head and
+   tail). Every rocket gets its own launch point 300 m above open sea, 120 m from any other, with 1.5 km of sea
+   ahead (north), so it flies its whole life and blows up at its `TimeToLive` in the air.
+2. **Run.** One game run per wind (`<game profile>\rmt\rockettest\w0` to `w4`), with `-rmtFire -rmtFireGap=1`:
+   `RMT_FireTestEntity` launches each rocket with `MissileMoveComponent.Launch` from the plan's 13th column (`y`,
+   the launch height) and, because every id starts with `T`, writes every frame to `traj.csv`. A wind is set with the
+   weather override and given 60 s to settle. The game keeps its output files open until the run ends, so a run that
+   hangs leaves nothing: one run per wind loses at most that wind, and `run` skips winds whose
+   `firetest.status.json` says done. (A single run of all winds once hung for good on a wind change.)
+3. **Score** (`rocketfit.py`):
+   - per rocket and elevation, the still-air flight every 0.05 s (along the ground, height), averaged over the
+     repeats;
+   - per rocket, what wind adds per m/s (along, up, side) every 0.05 s, averaged over the elevations: head, tail, and
+     cross (a least-squares fit through the 5 and 10 m/s runs; they agree, so the effect scales with the wind);
+   - the elevation each rocket needs on level ground, against each launcher's sight marks.
+
+Elevations between the tested ones are blended in each flight's own launch frame (distance along the launch line,
+drop below it), then turned to the wanted elevation: leaving every other elevation out, that predicts the missing
+flights to well under a metre for most rockets (blending heights directly was off by up to 4 m). Past the end
+elevations the end flight is turned, not extrapolated.
+
+### What the game's files say
+- **Rockets** (`Prefabs/Weapons/Ammo/Ammo_Rocket_*.et`, `MissileMoveComponent`): `InitSpeed` (PG-7VM 140, PG-7VL
+  112, PG-7VR 66, M72A3 150, PG-22 133, RPG-75 189 m/s), a motor (`ThrustForce` for `ThrustTime` after
+  `ThrustInitTime`; the M72A3, PG-22 and RPG-75 have practically none), `Mass`, `ForwardAirFriction`,
+  `SideAirFriction`, `AlignTorque` and `TimeToLive` (5 s; M72A3 6.1, RPG-75 6).
+- **Launchers** (`Prefabs/Weapons/Launchers/*/..._base.et`): no muzzle speed factor. `SightsRanges` give each
+  zeroing mark's `Angles` (the bore above the line of sight, in degrees). The M72A3's `ProjectileSpawnPositions` turn
+  the rocket 0.5° up from the bore.
+- **PGO-7V3** (`Optic_PGO7V3_base.et`): no zeroing; the range lines are drawn on its reticle,
+  `UI/Textures/Sights/PGO7/PGO7_white_solid_UI.edds` (2048 px, BC7, LZ4-chunked). `m_fReticleAngularSize 6` degrees
+  spans `m_fReticlePortion 0.65234` of the texture, which is the lateral scale's ±5 units: 222.7 px per degree, 0.6°
+  per lateral unit. Measured from the cross at the top (the bore): PG-7VM lines 200-500 m at 1.62, 2.05, 2.52 and
+  3.12°; PG-7VL (the right-hand scale) 100, 150, 200 and 300 m on the same lines; PG-7VR 100, 150 and 200 m at 3.71,
+  4.77 and 5.86°. Those, and the iron-sight marks, sit close to what the measured flights need, which is how the cross
+  is known to be the bore.
+
+### Output (`<game profile>\rmt\rockettest\w<n>\firetest\`)
+- `plan.csv` (`firetest.py`'s columns plus `y`) and `plan.json` (with rocket, elevation, wind and repeat)
+- `traj.csv`: `id,round,t,x,y,z,vx,vy,vz`, every frame; `shots.csv`: one line per rocket (where it ended)
+- `..\firetest.status.json`
+- `out/rockets.json` (from `score`): copy to the site's `static/data/rockets.json`
 
 ---
 

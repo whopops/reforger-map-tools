@@ -8,6 +8,7 @@ import os
 import re
 import time
 
+from . import addons, paths
 from .workbench import REPO, JobFailed, Workbench, read_status
 
 JOBS = ["probe", "mapdata", "roads", "names", "entities", "terrain", "surface"]
@@ -50,7 +51,7 @@ class Exporter:
 
     # ---------------------------------------------------------------------------------------------
     def list_worlds(self, refresh=False):
-        cache = os.path.join(REPO, "out", "worlds.txt")
+        cache = os.path.join(paths.workspace(), "worlds.txt")
         if refresh or not os.path.isfile(cache):
             wb = Workbench(self.install, log=self.log)
             code, _, _ = wb.run("worlds", "rmt/_worlds", stall=300)
@@ -69,6 +70,11 @@ class Exporter:
         if os.path.isfile(arg):
             rel, guid, parent = addon_of_file(arg)
             return rel, ([guid] if guid else []), [parent]
+        # Every installed addon's resource database first (instant, and it knows which mod a world needs); the world
+        # list Workbench writes (rmt.py worlds) is the fallback.
+        found = addons.find_world(self.install, arg)
+        if found:
+            return found
         worlds = self.list_worlds()
         a = arg.replace("\\", "/").lower()
         exact = [w for w in worlds if w.lower() == a or w.lower().split("}", 1)[-1] == a]
@@ -88,7 +94,7 @@ class Exporter:
         build = self.install.game_build
         out_rel = f"rmt/{slug}/{build}"
         raw = os.path.join(self.install.profile, "rmt", slug, build)
-        run_dir = os.path.join(REPO, "out", slug, build)
+        run_dir = os.path.join(paths.workspace(), slug, build)
         os.makedirs(run_dir, exist_ok=True)
         manifest_path = os.path.join(run_dir, "manifest.json")
         manifest = {}

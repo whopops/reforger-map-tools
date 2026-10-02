@@ -4,17 +4,21 @@ Point `rmt.py` at any Arma Reforger map. It runs Arma Reforger Tools (Workbench)
 exports everything a map site needs, then bakes it into a site-ready data folder: roads, line-of-sight tiles, place
 names, satellite tiles and tree/bush data. Nothing in it is specific to one map.
 
+There is also a desktop app over the same tools: `python rmt_gui.py` (needs `pip install -r requirements.txt`; see
+[docs/gui.md](docs/gui.md)).
+
 This file is the quick start and the map of the folder. The detail is in `docs/`:
 
 | Doc | What it explains |
 |---|---|
+| [docs/gui.md](docs/gui.md) | The desktop app (`rmt_gui.py`): its pages, how it drives `rmt.py`, what is tested and what isn't |
 | [docs/export-jobs.md](docs/export-jobs.md) | `rmt.py export`: every job, its settings, its raw output files, how retries and resume work |
 | [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts; then `rmt.py check` (scoring the line of sight) and `rmt.py fieldmap` (into the website, 2D and 3D) |
 | [docs/satellite-and-foliage.md](docs/satellite-and-foliage.md) | The two jobs that run in the game itself: how they work, how to tune them |
 | [docs/addon.md](docs/addon.md) | The Enforce scripts inside Workbench and the game, and the command-line contract between them and `rmt.py` |
-| [docs/firetest.md](docs/firetest.md) | The mortar tools: `firetest.py` (live-fire test), `blasttest.py` (blast test) and the `ballistics` job |
+| [docs/firetest.md](docs/firetest.md) | The mortar and rocket tools: `firetest.py` (live-fire test), `blasttest.py` (blast test), `rockettest.py` (rocket flights) and the `ballistics` job |
 | [docs/audible.md](docs/audible.md) | `audible/`: how far gunshots are heard, from the game's sound files |
-| [docs/gui-plan.md](docs/gui-plan.md) | Proposal: a desktop GUI over all of these tools (not built) |
+| [docs/gui-plan.md](docs/gui-plan.md) | The plan behind the desktop app, and what is still to do |
 | [docs/foliage-opacity-review.md](docs/foliage-opacity-review.md) | Review: measuring foliage opacity without screenshots (not built) |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Hard rules, known failures and what to do about them |
 
@@ -52,8 +56,11 @@ file name (`Eden`). Names that match several worlds are rejected with the list o
 | `python rmt.py bake <world> [--parts ...]` | Bakes the newest export of that world into site data. See [docs/bakers.md](docs/bakers.md). |
 | `python rmt.py check <world>` | Scores the baked line of sight against the engine's own sight lines (the `sightlines` job). See [docs/bakers.md](docs/bakers.md#rmtpy-check-scoring-the-line-of-sight). |
 | `python rmt.py fieldmap <world> [--to ...]` | Installs the newest bake into the website (`arma-map/everon-map`): the map data both its 2D and 3D views read, the 3D view's trees and its map list. See [docs/bakers.md](docs/bakers.md#rmtpy-fieldmap-into-the-website). |
+| `python rmt.py run <world> --products a,b [--install ...]` | Export, bake, check and install in one go, from what you want (`roads`, `los`, `places`, `satellite`, `foliage`, `check`); dependencies are added. Takes the `export` options and the `fieldmap` options. See [docs/gui.md](docs/gui.md#new-command-line-pieces-usable-without-the-window). |
+| `python rmt.py detect` | Checks this PC: Steam, the game, the Tools, Workbench, mods, whether Workbench and the game are closed. |
 
-Global option: `--workbench <path to ArmaReforgerWorkbenchSteamDiag.exe>`.
+Global options (before the command): `--workbench <path to ArmaReforgerWorkbenchSteamDiag.exe>`; `--workspace <folder>`
+(manifests and site data go there instead of `out/`); `--events` (JSON lines for the desktop app).
 
 `export` options: `--jobs a,b,c`, `--tile <m>` (chunk size, default 500), `--region tx0,tz0,tx1,tz1` and
 `--max-chunks N` (both for tests), `--set NAME=VALUE` (repeatable, passed on as `-rmtNAME=VALUE`), `--retries N`
@@ -82,8 +89,8 @@ first, and `satellite` needs the terrain export.
 |---|---|
 | Raw data from the Workbench jobs | `<Documents>\My Games\ArmaReforgerWorkbench\profile\rmt\<slug>\<build>\` |
 | Raw data from the game jobs (`satellite`, `foliage`) | `<Documents>\My Games\ArmaReforger\profile\rmt\<slug>\<build>\satellite` and `...\foliage` |
-| Run record (`manifest.json`) and baked site data | `out/<slug>/<build>/` and `out/<slug>/<build>/site/` in this repo |
-| World list cache | `out/worlds.txt` |
+| Run record (`manifest.json`) and baked site data | `out/<slug>/<build>/` and `out/<slug>/<build>/site/` in this repo (or in the `--workspace` folder; the app's output folder) |
+| World list cache | `out/worlds.txt` (only `rmt.py worlds` uses it now: names resolve through the addons' resource databases first) |
 | Engine sight lines for `check` | `<raw folder>\sightlines\check.csv` |
 | The website's copy (`fieldmap`) | `arma-map\everon-map\static\data\maps\<id>\` and `static\3d\maps.json` (beside this repo's folder by default) |
 | Generated addon copy | `.build/` (rebuilt every run; do not edit) |
@@ -96,8 +103,14 @@ first, and `satellite` needs the terrain export.
 
 | Path | What it is |
 |---|---|
-| `rmt.py` | The only command you run. Parses arguments, `bake`, `check` and `fieldmap` logic. |
+| `rmt.py` | The command line. Parses arguments; `bake`, `check`, `fieldmap`, `run` and `detect` logic. |
+| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)); `requirements.txt` lists what it and the bakers need |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
+| `rmtlib/addons.py` | Every installed addon and its worlds, from their resource databases; a world's mod dependencies |
+| `rmtlib/products.py` | What you ask for (roads, line of sight, ...) as export jobs and bake parts |
+| `rmtlib/detect.py` | The checks behind `rmt.py detect` and the app's Setup page |
+| `rmtlib/paths.py` | Where the workspace and the built addon are (repo, `--workspace`, or the packaged app) |
+| `rmtlib/events.py` | `--events`: JSON progress lines from the engine's heartbeat |
 | `rmtlib/workbench.py` | Builds the addon, launches Workbench or the game, supervises it through its log |
 | `rmtlib/steam.py` | Finds Steam, the game, Tools, profiles and logs; reads build ids |
 | `rmtlib/bake_roads.py` | Baker: `roads.json` (uses `rmtlib/topo.py`) |
@@ -114,10 +127,12 @@ first, and `satellite` needs the terrain export.
 | `addon/` | The Enforce scripts (see [docs/addon.md](docs/addon.md)) |
 | `firetest.py` | Live mortar firing test: plan, fire in the game, score ([docs/firetest.md](docs/firetest.md)) |
 | `blasttest.py` | Live mortar blast test: who goes down or is hurt around a burst ([docs/firetest.md](docs/firetest.md)) |
+| `rockettest.py`, `rocketfit.py` | Live rocket flight test, and the flight and wind tables the site's rocket calculator reads ([docs/firetest.md](docs/firetest.md)) |
 | `audible/` | Gunshot audibility from the game's sound files; separate scripts, run from that folder ([docs/audible.md](docs/audible.md)) |
 | `docs/` | The documentation listed above |
 
-Which data came from which tool: `everon-data/mortar/` from `firetest.py`, `everon-data/sound/` from `audible/`, and
+Which data came from which tool: `everon-data/mortar/` from `firetest.py`, `everon-data/rockets/` from
+`rockettest.py`, `everon-data/sound/` from `audible/`, and
 new exports of any map from `rmt.py`. The first Everon export (`everon-data/` terrain, objects, surface, roads,
 foliage, `check.csv`) came from older tools that were in the `arma-map` repo (`everon-map/tools`); `rmt.py` replaced
 them and they have been removed (they are in that repo's git history). arma-map holds only what runs the website
