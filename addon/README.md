@@ -37,10 +37,12 @@ and prints `RMT|` lines often enough that `rmt.py` can see it is alive.
 
 | File | Classes | What it does |
 |---|---|---|
-| `RMT_GameHook.c` | `modded class ArmaReforgerScripted` (overrides `OnWorldPostProcess`) | Checks the command line for `-rmtSat`, `-rmtFoliage` or `-rmtFire` and spawns the matching entity. Without the flag it does nothing, so the addon is harmless in a normal game. |
+| `RMT_GameHook.c` | `modded class ArmaReforgerScripted` (overrides `OnWorldPostProcess`) | Checks the command line for `-rmtSat`, `-rmtFoliage`, `-rmtFire`, `-rmtGun` or `-rmtBlast` and spawns the matching entity. Without the flag it does nothing, so the addon is harmless in a normal game. |
 | `RMT_SatCapture.c` | `RMT_SatCaptureEntity` | Moves a `CameraBase` to each grid square, preloads, waits, sets noon and clear weather, takes the screenshot and writes `s_<col>_<row>.txt`. Frame-driven (`EOnFrame`), never blocks. Writes `satellite.status.json` and requests close. |
 | `RMT_FoliageCapture.c` | `RMT_FoliageCaptureEntity` | Reads `plants.csv`, photographs each plant (shown and hidden) from sides, below and several distances, appends `shots.csv`, skips plants already done, writes `foliage.status.json`. |
 | `RMT_FireTest.c` | `RMT_FireTestEntity` | Reads `plan.csv`, fires real mortar shells with `ProjectileMoveComponent.Launch`, follows each to impact, sets and settles the wind, writes `shots.csv` and `traj.csv` and `firetest.status.json`. Driven by `../firetest.py`. |
+| `RMT_GunTest.c` | `RMT_GunTestEntity` | Reads `plan.csv`, places a real mortar, lays it by turning and tilting the gun until the barrel reads the planned numbers, loads a shell with the planned charge into the barrel and fires it through the weapon, follows it to impact, writes `shots.csv` and `guntest.status.json`. Driven by `../firetest.py gun`. |
+| `RMT_BlastTest.c` | `RMT_BlastTestEntity` | Reads `plan.csv` and `layout.csv`, stands riflemen around each aim point, drops a real shell on it, records every soldier into `hits.csv` and the burst into `bursts.csv`, clears up, writes `blasttest.status.json`. Driven by `../blasttest.py`. |
 
 ## Rules that bite
 - Script file writes outside `$profile:` raise a modal "Script Authorization Required" dialog that stalls the run.

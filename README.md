@@ -12,8 +12,10 @@ This file is the quick start and the map of the folder. The detail is in `docs/`
 | [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts; then `rmt.py check` (scoring the line of sight) and `rmt.py fieldmap` (into the website, 2D and 3D) |
 | [docs/satellite-and-foliage.md](docs/satellite-and-foliage.md) | The two jobs that run in the game itself: how they work, how to tune them |
 | [docs/addon.md](docs/addon.md) | The Enforce scripts inside Workbench and the game, and the command-line contract between them and `rmt.py` |
-| [docs/firetest.md](docs/firetest.md) | The mortar tools: `firetest.py` (live-fire test) and the `ballistics` job |
+| [docs/firetest.md](docs/firetest.md) | The mortar tools: `firetest.py` (live-fire test), `blasttest.py` (blast test) and the `ballistics` job |
 | [docs/audible.md](docs/audible.md) | `audible/`: how far gunshots are heard, from the game's sound files |
+| [docs/gui-plan.md](docs/gui-plan.md) | Proposal: a desktop GUI over all of these tools (not built) |
+| [docs/foliage-opacity-review.md](docs/foliage-opacity-review.md) | Review: measuring foliage opacity without screenshots (not built) |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Hard rules, known failures and what to do about them |
 
 ## Requirements
@@ -111,6 +113,7 @@ first, and `satellite` needs the terrain export.
 | `rmtlib/pak.py` | Reads files out of the game's `.pak` archives (also a command, below) |
 | `addon/` | The Enforce scripts (see [docs/addon.md](docs/addon.md)) |
 | `firetest.py` | Live mortar firing test: plan, fire in the game, score ([docs/firetest.md](docs/firetest.md)) |
+| `blasttest.py` | Live mortar blast test: who goes down or is hurt around a burst ([docs/firetest.md](docs/firetest.md)) |
 | `audible/` | Gunshot audibility from the game's sound files; separate scripts, run from that folder ([docs/audible.md](docs/audible.md)) |
 | `docs/` | The documentation listed above |
 

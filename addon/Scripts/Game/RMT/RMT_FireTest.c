@@ -7,6 +7,8 @@
 //                          <out>/firetest.status.json, then asks the game to close.
 //   -rmtFireSettle=<s>     how long a new wind is left to settle before firing (default 60: the air the shells fly
 //                          through changes some time after the weather manager reports the new wind)
+//   -rmtFireGap=<s>        a fixed pause between rounds (a crew re-laying and loading after each), instead of a random
+//                          GAP_MIN-GAP_MAX
 // plan.csv (header line, then one line per aim): id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz
 //   prefab: the shell's resource name; coef: its charge ring's speed coefficient; x,z: the mortar (it fires from 1.3 m
 //   above the ground there, where the M252's muzzle is); az: compass bearing in degrees; elev: degrees above the
@@ -62,6 +64,7 @@ class RMT_FireTestEntity : GenericEntity
 	const float GAP_MIN = 0.4;
 	const float GAP_MAX = 3;
 	protected float m_fGap = 1;
+	protected float m_fFixedGap = -1;   // -rmtFireGap: every gap this long instead
 	const int MAX_FLYING = 40;
 
 	//------------------------------------------------------------------------------------------------
@@ -92,6 +95,9 @@ class RMT_FireTestEntity : GenericEntity
 		string settle;
 		if (System.GetCLIParam("rmtFireSettle", settle) && settle != "")
 			m_fSettle = settle.ToFloat();
+		string gap;
+		if (System.GetCLIParam("rmtFireGap", gap) && gap != "")
+			m_fFixedGap = gap.ToFloat();
 		FileHandle f = FileIO.OpenFile(m_sDir + "/plan.csv", FileMode.READ);
 		if (!f)
 		{
@@ -333,7 +339,10 @@ class RMT_FireTestEntity : GenericEntity
 		if (m_fTimer < m_fGap || m_aFlying.Count() >= MAX_FLYING)
 			return;
 		m_fTimer = 0;
-		m_fGap = Math.RandomFloat(GAP_MIN, GAP_MAX);
+		if (m_fFixedGap > 0)
+			m_fGap = m_fFixedGap;
+		else
+			m_fGap = Math.RandomFloat(GAP_MIN, GAP_MAX);
 		FireOne(row);
 		m_iRound++;
 		if (m_iRound >= row[9].ToInt())

@@ -7,6 +7,16 @@ entity, Scripts/Game/RMT/RMT_FireTest.c), and scores where every round landed.
   python firetest.py plan               write the plan into the game profile
   python firetest.py run                plan, then run the game (Steam running, the game closed); ~25 min
   python firetest.py score [folder]     report on the last run (or a copy of one)
+  python firetest.py group [folder]     one aim fired again and again with the same numbers, a pause between rounds
+                                        (as a crew re-laying after each); then where each landed. With a folder: just
+                                        report on it. --distance 1200 --ring 3 --rounds 10 --gap 15
+  python firetest.py gun [folder]       the same, fired through a real mortar (RMT_GunTest.c: no crew; the tube is laid
+                                        on the numbers before every round, the shell loaded into the barrel and fired),
+                                        so the barrel's dispersion is in it; then where each landed and how far each left
+                                        the barrel's direction. Same options.
+  python firetest.py barrel [folder]    the muzzle study: every charge ring of both mortars through the real weapon,
+                                        --per-ring rounds each (default 40), each measured leaving the muzzle (speed,
+                                        and direction against the barrel); 1 in 8 followed to impact. ~1 h.
   options: --site <everon-map/static/data> (default ~/Documents/GitHub/arma-map/everon-map/static/data)
 
 What each round tells us:
@@ -18,7 +28,7 @@ What each round tells us:
     directly doesn't use the mortar's barrel, so the barrel's sideways spread isn't in a direct launch.)
   * the wind probe: the same aim with no wind and 10 m/s from four sides, uncorrected, to show how the game's wind pushes.
 
-Keep the SHELLS, MUZZLE_H, SPEED_SD, BARREL and P90 numbers in step with app.js.
+Keep the SHELLS, MUZZLE_H, SPEED_SD, SPEED_BIAS, BARREL, BARREL_SD and P90 numbers in step with app.js.
 """
 import argparse, collections, csv, gzip, json, math, os, random, statistics, struct, sys
 
@@ -36,6 +46,13 @@ SHELLS = {
                              {0: 1, 1: 1.321, 2: 1.736, 3: 2.087, 4: 2.455}),
 }
 MUZZLE_H, SPEED_SD, BARREL, P90 = 1.3, 1.07, 0.5 / 48, 2.146
+# Measured through the real mortars (firetest.py barrel, 400 rounds; with the direct launches, 1,080 rounds): the game's
+# launch speeds average 0.13 m/s above the shell's (on the base speed: the ring multiplies it), and the barrel throws a
+# round off its direction by a spread (sd, rad) that differs by mortar and by axis: up/down, sideways. BARREL is the most
+# it can (0.5 m at 48 m).
+SPEED_BIAS = 0.13
+_MIL = 2 * math.pi / 6400
+BARREL_SD = {'M252': (3.09 * _MIL, 4.19 * _MIL), '2B14': (3.90 * _MIL, 2.94 * _MIL)}
 TABLES = None
 
 
@@ -118,8 +135,11 @@ def flight(v, k, ang, dh, along=0.0, across=0.0):
             return None
 
 
+MIN_ELEV = math.radians(45)  # the flattest the tube fires: LimitsVert 45 85 in Prefabs/Weapons/Core/Mortar_Base.et
+
+
 def high_angle(v, k, d, dh, along, across):
-    lo, hi = math.radians(44), math.radians(89.5)
+    lo, hi = MIN_ELEV, math.radians(89.5)
     first = flight(v, k, lo, dh, along, across)
     if not first or first['range'] < d:
         return None
@@ -146,15 +166,16 @@ def bearing(a, b):
     return (math.degrees(math.atan2(b[0] - a[0], b[1] - a[1])) + 360) % 360
 
 
-def spread_of(v, coef, k, ang, dh, along, across, d):
+def spread_of(v, coef, k, ang, dh, along, across, d, w='M252'):
     """spreadOf(): the 90% ellipse's half-lengths along and across the line of fire, and the speed part's sd (m)"""
     f = lambda vv, aa: flight(vv, k, aa, dh, along, across)
     up, dn, hi, lo = f(v + 1, ang), f(v - 1, ang), f(v, ang + 0.002), f(v, ang - 0.002)
     if not (up and dn and hi and lo):
         return None
     dRdv, dRda = (up['range'] - dn['range']) / 2, (hi['range'] - lo['range']) / 0.004
-    sd_speed, barrel = abs(dRdv) * SPEED_SD * coef, BARREL / 2
-    return {'long': P90 * math.hypot(sd_speed, dRda * barrel), 'side': P90 * d * barrel / math.cos(ang), 'sd_speed': sd_speed}
+    b_up, b_side = BARREL_SD[w]
+    sd_speed = abs(dRdv) * SPEED_SD * coef
+    return {'long': P90 * math.hypot(sd_speed, dRda * b_up), 'side': P90 * d * b_side / math.cos(ang), 'sd_speed': sd_speed}
 
 
 def solve(w, s, frm, to, ter, wind=None):
@@ -168,10 +189,10 @@ def solve(w, s, frm, to, ter, wind=None):
     rings = []
     for ring, df in W['shells'][s].items():
         t = df['table']
-        if d < t[0][0] or d > t[-1][0]:
+        if d < t[0][0]:  # the table sets the shortest distance; the reach comes from the model (high_angle at MIN_ELEV)
             continue
         coef = coefs[int(ring)]
-        v = v0 * coef
+        v = (v0 + SPEED_BIAS) * coef
         real = high_angle(v, k, d, dh - MUZZLE_H, along, across)
         if not real:
             continue
@@ -180,9 +201,9 @@ def solve(w, s, frm, to, ter, wind=None):
             continue
         rings.append({'ring': int(ring), 'elev': elev, 'tof': real['tof'], 'coef': coef,
                       'az_mil': az * mpc / 360 - math.atan2(real['drift'], d) * mpc / (2 * math.pi),
-                      'spread': spread_of(v, coef, k, real['ang'], dh - MUZZLE_H, along, across, d)})
+                      'spread': spread_of(v, coef, k, real['ang'], dh - MUZZLE_H, along, across, d, w)})
     rings.sort(key=lambda r: r['ring'])
-    return {'d': d, 'dh': dh, 'az': az, 'mpc': mpc, 'best': rings[0] if rings else None, 'prefab': prefab}
+    return {'d': d, 'dh': dh, 'az': az, 'mpc': mpc, 'best': rings[0] if rings else None, 'rings': rings, 'prefab': prefab}
 
 
 # --- the plan -------------------------------------------------------------------------------------------------------
@@ -257,6 +278,379 @@ def make_plan(seed=11):
     return rows
 
 
+def group_plan(dist=1200, ring=3, rounds=10, w='M252', s='HE M821', seed=5):
+    """One aim, fired `rounds` times with the same elevation and azimuth: the spread a crew sees re-laying the same
+    numbers after every round. Level, open ground at both ends, no wind, the ring asked for."""
+    ter = Terrain()
+    rnd = random.Random(seed)
+    for _ in range(100000):
+        frm = (rnd.uniform(1000, 11800), rnd.uniform(1000, 11800))
+        if ter.ground(*frm) < 3 or ter.near(*frm, r=12, kinds=(1, 2, 3, 5)):
+            continue
+        az = rnd.uniform(0, 360)
+        to = (frm[0] + dist * math.sin(math.radians(az)), frm[1] + dist * math.cos(math.radians(az)))
+        if ter.ground(*to) < 3 or ter.near(*to) or abs(ter.ground(*to) - ter.ground(*frm)) > 3:
+            continue
+        sol = solve(w, s, frm, to, ter)
+        b = next((r for r in sol['rings'] if r['ring'] == ring), None)
+        if not b:
+            continue
+        mpc = sol['mpc']
+        return [{'id': 'G000', 'prefab': sol['prefab'], 'coef': b['coef'], 'x': frm[0], 'z': frm[1],
+                 'az': b['az_mil'] / mpc * 360, 'elev': b['elev'] / mpc * 360, 'wspeed': 0, 'wdir': 0, 'count': rounds,
+                 'tx': to[0], 'tz': to[1], 'ring': ring, 'd': sol['d'], 'dh': sol['dh'], 'map_az': sol['az'],
+                 'wind_from': None, 'tof': b['tof'], 'spread': b['spread'], 'probe': False, 'w': w, 's': s,
+                 'elev_mil': b['elev'], 'az_mil': b['az_mil']}]
+    raise SystemExit('no level aim found')
+
+
+def group_score(d):
+    """Where each round of the group landed against the target, and the group's size."""
+    p = json.load(open(os.path.join(d, 'plan.json')))[0]
+    rows = list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')))
+    a = math.radians(p['map_az'])
+    pts = []
+    for r in rows:
+        dx, dz = float(r['x']) - p['tx'], float(r['z']) - p['tz']
+        pts.append((dx * math.sin(a) + dz * math.cos(a), dx * math.cos(a) - dz * math.sin(a)))
+    print(f"{p['w']} {p['s']} ring {p['ring']} at {p['d']:.0f} m (target {p['dh']:+.1f} m above the mortar), no wind: "
+          f"elevation {p['elev_mil']:.0f} mil, azimuth {p['az_mil']:.0f} mil, the same for every round")
+    for i, (l, s) in enumerate(pts):
+        print(f'   round {i + 1:2d}: {l:+7.1f} m long, {s:+6.1f} m right   ({math.hypot(l, s):5.1f} m from the target)')
+    n = len(pts)
+    ml, ms = statistics.mean(l for l, _ in pts), statistics.mean(s for _, s in pts)
+    rt = sorted(math.hypot(l, s) for l, s in pts)
+    rc = sorted(math.hypot(l - ml, s - ms) for l, s in pts)
+    print(f'{n} rounds. Centre of the group: {ml:+.1f} m long, {ms:+.1f} m right of the target.')
+    print(f'   from the target: half within {statistics.median(rt):.1f} m, all within {rt[-1]:.1f} m')
+    print(f'   from the group centre: half within {statistics.median(rc):.1f} m, all within {rc[-1]:.1f} m')
+    if n > 2:
+        print(f'   spread (sd): {statistics.stdev(l for l, _ in pts):.1f} m long/short, {statistics.stdev(s for _, s in pts):.1f} m sideways')
+    sp = p['spread']
+    print(f"the site's 90% ellipse for this shot: +/-{sp['long']:.0f} m long/short, +/-{sp['side']:.0f} m sideways "
+          f"(sd {sp['long'] / P90:.1f} m and {sp['side'] / P90:.1f} m; the speed part alone sd {sp['sd_speed']:.1f} m long/short). "
+          'A direct launch has no barrel wobble, so the sideways spread here is only the launch.')
+
+
+MORTARS = {'M252': 'Prefabs/Weapons/Mortars/M252/Mortar_M252.et', '2B14': 'Prefabs/Weapons/Mortars/2B14/Mortar_2B14.et'}
+GUN_REL = 'rmt/guntest'
+
+
+def gun_run(p, rounds, gap):
+    """Fire plan p (from group_plan) through a real mortar (RMT_GunTest.c): laid on the numbers before every round."""
+    from blasttest import prefab_name
+    from rmtlib.steam import Install
+    from rmtlib.workbench import Runner
+    d = os.path.join(Install(None).game_profile, *GUN_REL.split('/'), 'gun')
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, 'plan.csv'), 'w', newline='') as f:
+        f.write('id,mortar,shell,ring,x,z,az,elev,count,tx,tz,gap\n')
+        f.write(f"{p['id']},{prefab_name(MORTARS[p['w']])},{p['prefab']},{p['ring']},{p['x']:.2f},{p['z']:.2f},"
+                f"{p['az']:.5f},{p['elev']:.5f},{rounds},{p['tx']:.2f},{p['tz']:.2f},{gap}\n")
+    json.dump([p], open(os.path.join(d, 'plan.json'), 'w'), indent=1)
+    print(f"plan: {p['w']} {p['s']} ring {p['ring']}, {rounds} rounds at {p['d']:.0f} m -> {d}")
+    code, lines, status = Runner(Install(None)).run_game('guntest', GUN_REL, WORLD, flag='-rmtGun', stall=300, limit=3600)
+    print('exit', code, 'status', status)
+    return d
+
+
+def gun_score(d):
+    """Where each round fired through the real mortar landed, how well the tube was laid, and how far each round left
+    the barrel's direction (the barrel's dispersion, which a direct launch never has)."""
+    p = json.load(open(os.path.join(d, 'plan.json')))[0]
+    rows = list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')))
+    mpc = 6400
+    a = math.radians(p['map_az'])
+    to_mil = lambda rad: rad * mpc / (2 * math.pi)
+    print(f"{p['w']} {p['s']} ring {p['ring']} at {p['d']:.0f} m (target {p['dh']:+.1f} m above the mortar), no wind; "
+          f"laid on elevation {p['elev_mil']:.1f} mil, azimuth {p['az'] * mpc / 360:.1f} mil before every round")
+    pts, d_el, d_az, speeds, lay = [], [], [], [], []
+    for i, r in enumerate(rows):
+        dx, dz = float(r['x']) - p['tx'], float(r['z']) - p['tz']
+        l, s = dx * math.sin(a) + dz * math.cos(a), dx * math.cos(a) - dz * math.sin(a)
+        pts.append((l, s))
+        # the barrel's direction, and the shell's when it left (gravity taken back out of the first velocity seen)
+        b = [float(r[k]) for k in ('bx', 'by', 'bz')]
+        v = [float(r['v0x']), float(r['v0y']) + GRAV * float(r['v0dt']), float(r['v0z'])]
+        sp = math.sqrt(sum(c * c for c in v))
+        speeds.append(sp)
+        b_el, b_az = math.asin(b[1] / math.sqrt(sum(c * c for c in b))), math.atan2(b[0], b[2])
+        v_el, v_az = math.asin(v[1] / sp), math.atan2(v[0], v[2])
+        de = to_mil(v_el - b_el)
+        da = to_mil((v_az - b_az + math.pi) % (2 * math.pi) - math.pi) * math.cos(b_el)  # as an angle across the shot
+        d_el.append(de); d_az.append(da)
+        lay.append((float(r['lay_el']) - p['elev'], ((float(r['lay_az']) - p['az'] + 180) % 360 - 180)))
+        print(f'   round {i + 1:2d}: {l:+7.1f} m long, {s:+6.1f} m right ({math.hypot(l, s):5.1f} m from the target); '
+              f'left the barrel {de:+5.2f} mil up, {da:+5.2f} mil right, at {sp:6.2f} m/s')
+    n = len(pts)
+    if not n:
+        print('no rounds landed')
+        return
+    print(f"   the tube was laid within {max(abs(e) for e, _ in lay) * mpc / 360:.2f} mil in elevation and "
+          f"{max(abs(z) for _, z in lay) * mpc / 360:.2f} mil in azimuth of the numbers every time")
+    ml, ms = statistics.mean(l for l, _ in pts), statistics.mean(s for _, s in pts)
+    rt = sorted(math.hypot(l, s) for l, s in pts)
+    rc = sorted(math.hypot(l - ml, s - ms) for l, s in pts)
+    print(f'{n} rounds. Centre of the group: {ml:+.1f} m long, {ms:+.1f} m right of the target.')
+    print(f'   from the target: half within {statistics.median(rt):.1f} m, 90% within {rt[min(n - 1, int(math.ceil(0.9 * n)) - 1)]:.1f} m, '
+          f'all within {rt[-1]:.1f} m')
+    print(f'   from the group centre: half within {statistics.median(rc):.1f} m, all within {rc[-1]:.1f} m')
+    if n > 2:
+        print(f'   spread (sd): {statistics.stdev(l for l, _ in pts):.1f} m long/short, {statistics.stdev(s for _, s in pts):.1f} m sideways')
+        print(f'   barrel dispersion (sd): {statistics.stdev(d_el):.2f} mil up/down, {statistics.stdev(d_az):.2f} mil sideways; '
+              f'largest {max(math.hypot(e, z) for e, z in zip(d_el, d_az)):.2f} mil off the barrel. Launch speed sd {statistics.stdev(speeds):.2f} m/s')
+    sp = p['spread']
+    print(f"the site's 90% ellipse for this shot: +/-{sp['long']:.0f} m long/short, +/-{sp['side']:.0f} m sideways "
+          f"(sd {sp['long'] / P90:.1f} m and {sp['side'] / P90:.1f} m). The site's barrel spread for the {p['w']}: sd "
+          f"{to_mil(BARREL_SD[p['w']][0]):.2f} mil up/down, {to_mil(BARREL_SD[p['w']][1]):.2f} mil sideways (measured), "
+          f"never past {to_mil(BARREL):.1f} mil.")
+
+
+# --- the muzzle study: every charge ring of both mortars, fired through the real weapon ------------------------------
+BARREL_REL = 'rmt/barreltest'
+STUDY = (('M252', 'HE M821'), ('2B14', 'HE O-832DU'))
+FRESH_GUN = 20
+
+
+def barrel_plan(per_ring=40, track_every=8, seed=21):
+    """Rows for RMT_GunTest: per mortar one spot, and per charge ring a target at about the middle of that ring's reach,
+    level ground, no wind. per_ring rounds per ring, the rings taken in a fresh random order every cycle so the game's
+    slowly drifting launch speed falls on all of them alike. Every track_every-th round is followed to impact; the rest
+    are only measured leaving the muzzle (how fast, which way against the barrel), which is all the spread depends on."""
+    from blasttest import prefab_name
+    ter = Terrain()
+    rnd = random.Random(seed)
+    rows = []
+    for w, s in STUDY:
+        rings = sorted(int(r) for r in TABLES[w]['shells'][s])
+        mortar = prefab_name(MORTARS[w])
+        for _ in range(200000):
+            frm = (rnd.uniform(1500, 11300), rnd.uniform(1500, 11300))
+            if ter.ground(*frm) < 3 or ter.near(*frm, r=15, kinds=(1, 2, 3, 5)):
+                continue
+            az = rnd.uniform(0, 360)
+            aims, ok = {}, True
+            for ring in rings:
+                t = TABLES[w]['shells'][s][str(ring)]['table']
+                dist = (t[0][0] + t[-1][0]) / 2
+                to = (frm[0] + dist * math.sin(math.radians(az)), frm[1] + dist * math.cos(math.radians(az)))
+                if ter.ground(*to) < 3 or abs(ter.ground(*to) - ter.ground(*frm)) > 15:
+                    ok = False
+                    break
+                sol = solve(w, s, frm, to, ter)
+                b = next((r for r in sol['rings'] if r['ring'] == ring), None)
+                if not b:
+                    ok = False
+                    break
+                aims[ring] = (to, sol, b)
+            if ok:
+                break
+        else:
+            raise SystemExit(f'no spot found for {w}')
+        n = 0
+        for cycle in range(per_ring):
+            order = rings[:]
+            rnd.shuffle(order)
+            for ring in order:
+                to, sol, b = aims[ring]
+                mpc = sol['mpc']
+                # a fresh gun every FRESH_GUN rounds: one gun fired about 140 times stopped the game with "BitBuffer
+                # memory overflow". Lines for a gun in a new place get a new gun; 1 cm along is a new place.
+                rows.append({'id': f'{w}-R{ring}-{cycle:02d}', 'w': w, 's': s, 'ring': ring, 'mortar': mortar,
+                             'prefab': sol['prefab'], 'coef': b['coef'], 'x': frm[0] + (n // FRESH_GUN) * 0.01, 'z': frm[1],
+                             'az': b['az_mil'] / mpc * 360, 'elev': b['elev'] / mpc * 360, 'tx': to[0], 'tz': to[1],
+                             'd': sol['d'], 'dh': sol['dh'], 'map_az': sol['az'], 'spread': b['spread'],
+                             'gap': round(rnd.uniform(1, 5), 2), 'track': int(cycle % track_every == 0)})
+                n += 1
+    return rows
+
+
+def barrel_run(rows, rel=BARREL_REL):
+    from rmtlib.steam import Install
+    from rmtlib.workbench import Runner
+    d = os.path.join(Install(None).game_profile, *rel.split('/'), 'gun')
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, 'plan.csv'), 'w', newline='') as f:
+        f.write('id,mortar,shell,ring,x,z,az,elev,count,tx,tz,gap,track\n')
+        for r in rows:
+            f.write(f"{r['id']},{r['mortar']},{r['prefab']},{r['ring']},{r['x']:.2f},{r['z']:.2f},{r['az']:.5f},"
+                    f"{r['elev']:.5f},1,{r['tx']:.2f},{r['tz']:.2f},{r['gap']},{r['track']}\n")
+    json.dump(rows, open(os.path.join(d, 'plan.json'), 'w'), indent=1)
+    print(f'plan: {len(rows)} rounds ({sum(r["track"] for r in rows)} followed to impact) -> {d}')
+    code, lines, status = Runner(Install(None)).run_game('guntest', rel, WORLD, flag='-rmtGun', stall=600, limit=3 * 3600)
+    print('exit', code, 'status', status)
+    return d
+
+
+def launch_of(r, k):
+    """A round's velocity the instant it left the muzzle: the first one seen, v0dt s later, with gravity and drag over
+    that time taken back out."""
+    v = [float(r['v0x']), float(r['v0y']), float(r['v0z'])]
+    dt = float(r['v0dt'])
+    s = math.sqrt(sum(c * c for c in v))
+    a = [-k * s * v[0], -GRAV - k * s * v[1], -k * s * v[2]]
+    return [v[i] - a[i] * dt for i in range(3)]
+
+
+def study_rows(dirs):
+    """The rounds of one or more muzzle-study runs (a run resumed in a new session goes to its own folder), with the
+    plan line of each; a round in more than one run is taken from the first."""
+    seen, out = set(), []
+    for d in dirs:
+        plan = {p['id']: p for p in json.load(open(os.path.join(d, 'plan.json')))}
+        for r in csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')):
+            if r['id'] in seen or not r.get('ground_target'):  # a line cut short when a run stopped
+                continue
+            seen.add(r['id'])
+            out.append((r, plan[r['id']]))
+    return out
+
+
+def muzzle_samples(dirs):
+    """Every round of a muzzle study: weapon, ring, coef, its launch speed against the expected (dv, m/s, and dv_base,
+    on the base speed), and how far it left the barrel's direction (de up, da right, mils), plus the row and plan."""
+    if isinstance(dirs, str):
+        dirs = [dirs]
+    out = []
+    for r, p in study_rows(dirs):
+        _, v0, k, coefs = SHELLS[(p['w'], p['s'])]
+        v = launch_of(r, k)
+        sp = math.sqrt(sum(c * c for c in v))
+        b = [float(r[q]) for q in ('bx', 'by', 'bz')]
+        bn = math.sqrt(sum(c * c for c in b))
+        b = [c / bn for c in b]
+        # the round's direction in the barrel's frame: up (in the vertical plane through the barrel) and right
+        u = [c / sp for c in v]
+        right = [b[2], 0.0, -b[0]]
+        rn = math.sqrt(sum(c * c for c in right))
+        right = [c / rn for c in right]
+        up = [right[1] * b[2] - right[2] * b[1], right[2] * b[0] - right[0] * b[2], right[0] * b[1] - right[1] * b[0]]
+        if up[1] < 0:
+            up = [-c for c in up]
+        fwd = sum(u[i] * b[i] for i in range(3))
+        mil = 6400 / (2 * math.pi)
+        de = math.atan2(sum(u[i] * up[i] for i in range(3)), fwd) * mil
+        da = math.atan2(sum(u[i] * right[i] for i in range(3)), fwd) * mil
+        coef = coefs[p['ring']]
+        out.append({'w': p['w'], 's': p['s'], 'ring': p['ring'], 'coef': coef, 'speed': sp, 'dv': sp - v0 * coef,
+                    'dv_base': (sp - v0 * coef) / coef, 'de': de, 'da': da, 'r': math.hypot(de, da), 'row': r, 'plan': p,
+                    'v': v})
+    return out
+
+
+def barrel_score(dirs):
+    S = muzzle_samples(dirs)
+    print(f'{len(S)} rounds ({", ".join(dirs) if isinstance(dirs, list) else dirs})')
+    R = BARREL * 6400 / (2 * math.pi)  # the game's dispersion circle's radius in mils (0.5 m at 48 m)
+    sd = lambda xs: statistics.stdev(xs) if len(xs) > 1 else float('nan')
+    print('\n1) launch speed against the shell\'s speed x the ring\'s multiplier (m/s), and per base speed (/ coef)')
+    for w, s in STUDY:
+        for ring in sorted({x['ring'] for x in S if x['w'] == w}):
+            v = [x for x in S if x['w'] == w and x['ring'] == ring]
+            dv, db = [x['dv'] for x in v], [x['dv_base'] for x in v]
+            print(f'   {w} ring {ring} (x{v[0]["coef"]}): {len(v):3d} rounds, mean {statistics.mean(dv):+6.2f}, sd {sd(dv):5.2f}, '
+                  f'range {min(dv):+6.2f} to {max(dv):+6.2f}; on the base speed sd {sd(db):.3f} (mean {statistics.mean(db):+.3f})')
+        v = [x['dv_base'] for x in S if x['w'] == w]
+        q = sorted(v)
+        print(f'   {w} all rings, on the base speed: sd {sd(v):.3f} m/s, mean {statistics.mean(v):+.3f}, '
+              f'5/25/50/75/95%: ' + ' '.join(f'{q[int(f * (len(q) - 1))]:+.2f}' for f in (0.05, 0.25, 0.5, 0.75, 0.95)) +
+              f', extremes {q[0]:+.2f} / {q[-1]:+.2f}')
+    print(f'\n2) direction off the barrel (mils). The game\'s circle: radius {R:.2f} mil. Picked evenly over its area: mean '
+          f'distance {2 * R / 3:.2f}, sd {R / 2:.2f} each way, a quarter within half the radius; picked at an even distance '
+          f'from the middle: mean {R / 2:.2f}, sd {R / math.sqrt(6):.2f} each way, half within half the radius.')
+    for w, s in STUDY:
+        v = [x for x in S if x['w'] == w]
+        rr = sorted(x['r'] for x in v)
+        print(f'   {w}: {len(v)} rounds: sd {sd([x["de"] for x in v]):.2f} up/down, {sd([x["da"] for x in v]):.2f} sideways; '
+              f'mean {statistics.mean(x["de"] for x in v):+.2f} up, {statistics.mean(x["da"] for x in v):+.2f} right; '
+              f'distance mean {statistics.mean(rr):.2f}, largest {rr[-1]:.2f}, within half the radius {sum(x < R / 2 for x in rr) / len(rr):.0%}')
+        for ring in sorted({x['ring'] for x in v}):
+            vr = [x for x in v if x['ring'] == ring]
+            print(f'      ring {ring}: sd {sd([x["de"] for x in vr]):.2f} / {sd([x["da"] for x in vr]):.2f}, '
+                  f'mean distance {statistics.mean(x["r"] for x in vr):.2f}')
+    print('\n3) the rounds followed down: the model flown from each one\'s own launch, against where it landed (physics alone)')
+    res = []
+    for x in S:
+        r, p = x['row'], x['plan']
+        if float(r['tof']) < 0:
+            continue
+        v = x['v']
+        sp = x['speed']
+        el, az = math.asin(v[1] / sp), math.atan2(v[0], v[2])
+        _, _, k, _ = SHELLS[(p['w'], p['s'])]
+        f = flight(sp, k, el, float(r['y']) - float(r['my']))
+        if not f:
+            continue
+        dx, dz = float(r['x']) - float(r['mx']), float(r['z']) - float(r['mz'])
+        res.append((dx * math.sin(az) + dz * math.cos(az) - f['range'], dx * math.cos(az) - dz * math.sin(az) - f['drift']))
+    if res:
+        print(f'   {len(res)} rounds: range off by median {statistics.median(abs(a) for a, _ in res):.2f} m (worst '
+              f'{max(abs(a) for a, _ in res):.2f}), sideways median {statistics.median(abs(b) for _, b in res):.2f} m')
+    barrel_model(S)
+    return S
+
+
+def barrel_model(S, seed=3, draws=4000):
+    """From a muzzle study: the constants for the site's spread (launch speed sd on the base speed, the barrel's sd each
+    way), and how well the site's ellipse (spread_of, P90) with them holds 90% of rounds: the measured rounds themselves
+    (each one's speed error and direction off the barrel, drawn at random from that mortar's rounds) flown by the model at
+    short, middle and long range for every ring, flat ground, no wind."""
+    rnd = random.Random(seed)
+    mil = 6400 / (2 * math.pi)
+    print('\n4) the constants the measurements give')
+    consts = {}
+    for w, s in STUDY:
+        v = [x for x in S if x['w'] == w]
+        sd_speed = statistics.stdev(x['dv_base'] for x in v)
+        mean_speed = statistics.mean(x['dv_base'] for x in v)
+        sd_up = statistics.pstdev([x['de'] for x in v]) / mil
+        sd_side = statistics.pstdev([x['da'] for x in v]) / mil
+        consts[w] = (sd_speed, sd_up, sd_side, mean_speed)
+        print(f'   {w}: launch speed sd {sd_speed:.3f} m/s on the base speed (site {SPEED_SD}), mean {mean_speed:+.3f} '
+              f'(site {SPEED_BIAS:+.2f}); barrel sd {sd_up * mil:.2f} mil up/down, {sd_side * mil:.2f} mil sideways '
+              f'(site {BARREL_SD[w][0] * mil:.2f} / {BARREL_SD[w][1] * mil:.2f})')
+    print(f'\n5) the site\'s ellipse (its own constants) against the measured rounds flown by the model ({draws} draws each);'
+          ' aimed as the site aims, so the measured rounds\' speed bias is in the aim only as far as SPEED_BIAS takes it')
+    worst = []
+    for w, s in STUDY:
+        _, v0, k, coefs = SHELLS[(w, s)]
+        pool = [x for x in S if x['w'] == w]
+        for ring in sorted(int(r) for r in TABLES[w]['shells'][s]):
+            t = TABLES[w]['shells'][s][str(ring)]['table']
+            for frac in (0.15, 0.5, 0.85):
+                d = t[0][0] + (t[-1][0] - t[0][0]) * frac
+                v = (v0 + SPEED_BIAS) * coefs[ring]   # the speed the site aims with
+                real = high_angle(v, k, d, -MUZZLE_H, 0, 0)
+                if not real:
+                    continue
+                ang = real['ang']
+                sp = spread_of(v, coefs[ring], k, ang, -MUZZLE_H, 0, 0, d, w)
+                sd_long, sd_side = sp['long'] / P90, sp['side'] / P90
+                # the rounds: each drawn round's speed error (scaled to this ring; it carries the game's own bias) and
+                # direction off the barrel
+                pts = []
+                for _ in range(draws):
+                    x = rnd.choice(pool)
+                    vv = v0 * coefs[ring] + x['dv_base'] * coefs[ring]
+                    aa = ang + x['de'] / mil
+                    f = flight(vv, k, aa, -MUZZLE_H)
+                    if not f:
+                        continue
+                    side = math.tan(x['da'] / mil / math.cos(ang)) * f['range']
+                    pts.append((f['range'] - real['range'], side))
+                m_l = statistics.mean(a for a, _ in pts)
+                q = sorted(math.sqrt(((a - 0) / sd_long) ** 2 + (b / sd_side) ** 2) for a, b in pts)
+                inside = sum(z <= P90 for z in q) / len(q)
+                need = q[int(0.9 * len(q))]
+                worst.append(need)
+                rr = sorted(math.hypot(a, b) for a, b in pts)
+                print(f'   {w} ring {ring} {d:5.0f} m: ellipse +/-{P90 * sd_long:4.0f} x {P90 * sd_side:3.0f} m holds {inside:5.1%}; '
+                      f'size for 90%: {need:.2f} sd (site {P90}); centre {m_l:+.1f} m long; rounds within '
+                      f'{rr[len(rr) // 2]:.0f} m (half) / {rr[int(0.9 * len(rr))]:.0f} m (90%) of the aim')
+    print(f'\n   size that holds 90% in every case above: {max(worst):.2f} sd; median {statistics.median(worst):.2f} (site uses {P90})')
+    return consts
+
+
 def game_dir():
     from rmtlib.steam import Install
     return os.path.join(Install(None).game_profile, *OUT_REL.split('/'), 'firetest')
@@ -274,11 +668,11 @@ def write_plan(rows):
     print(f"plan: {len(rows)} aims, {sum(r['count'] for r in rows)} rounds -> {d}")
 
 
-def run():
+def run(rows=None, args=()):
     from rmtlib.steam import Install
     from rmtlib.workbench import Runner
-    write_plan(make_plan())
-    code, lines, status = Runner(Install(None)).run_game('firetest', OUT_REL, WORLD, flag='-rmtFire', stall=300, limit=3600)
+    write_plan(rows or make_plan())
+    code, lines, status = Runner(Install(None)).run_game('firetest', OUT_REL, WORLD, flag='-rmtFire', args=args, stall=300, limit=3600)
     print('exit', code, 'status', status)
 
 
@@ -382,8 +776,18 @@ def score(d):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', choices=('plan', 'run', 'score'))
-    ap.add_argument('folder', nargs='?', help='score: a run folder (default: the last run in the game profile)')
+    ap.add_argument('cmd', choices=('plan', 'run', 'score', 'group', 'gun', 'barrel'))
+    ap.add_argument('--per-ring', type=int, default=40, help='barrel: rounds per charge ring of each mortar')
+    ap.add_argument('--resume', help='barrel: a run folder that stopped part way: fire only the rounds it lacks (in a '
+                    'new session, into --out) and score both together')
+    ap.add_argument('--out', default=BARREL_REL, help=f'barrel: run folder under the game profile (default {BARREL_REL})')
+    ap.add_argument('--also', action='append', default=[], help='barrel with a folder: more run folders to score with it')
+    ap.add_argument('folder', nargs='?', help='score / group: a run folder to report on (default: score the last run; '
+                    'group fires a new one)')
+    ap.add_argument('--distance', type=float, default=1200, help='group: metres to the target')
+    ap.add_argument('--ring', type=int, default=3, help='group: charge ring')
+    ap.add_argument('--rounds', type=int, default=10, help='group: rounds')
+    ap.add_argument('--gap', type=float, default=15, help='group: seconds between rounds (re-laying and loading)')
     ap.add_argument('--site', default=SITE, help='the field map\'s static/data folder')
     args = ap.parse_args()
     SITE = args.site
@@ -392,5 +796,23 @@ if __name__ == '__main__':
         write_plan(make_plan())
     elif args.cmd == 'run':
         run()
+    elif args.cmd == 'group':
+        if not args.folder:
+            OUT_REL = 'rmt/firetest-group'  # its own folder, so the full test's results stay
+            run(group_plan(args.distance, args.ring, args.rounds), args=(f'-rmtFireGap={args.gap}',))
+        group_score(args.folder or game_dir())
+    elif args.cmd == 'barrel':
+        if args.folder:
+            dirs = [args.folder] + args.also
+        elif args.resume:
+            # the same plan, less the rounds an earlier run (stopped part way) already has, into a folder of its own
+            done = {r['id'] for r, _ in study_rows([args.resume])}
+            rows = [r for r in barrel_plan(args.per_ring) if r['id'] not in done]
+            dirs = [args.resume, barrel_run(rows, args.out)]
+        else:
+            dirs = [barrel_run(barrel_plan(args.per_ring), args.out)]
+        barrel_score(dirs)
+    elif args.cmd == 'gun':
+        gun_score(args.folder or gun_run(group_plan(args.distance, args.ring, args.rounds)[0], args.rounds, args.gap))
     else:
         score(args.folder or game_dir())

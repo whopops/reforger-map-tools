@@ -162,6 +162,117 @@ class RMT_RoadsJob
 }
 
 //------------------------------------------------------------------------------------------------
+// sightlines/check.csv: random sight lines fired by the engine itself, so the baked line of sight can be scored
+// against the game (`rmt.py check`, rmtlib/check_los.py). Port of the old Everon exporter's "Check: sight lines".
+// Observers crouch (eyes 1 m up) or, three times in ten, sit in a vehicle (2 m); targets stand (chest 1.5 m); 10 m
+// to 1 km apart, evenly spread on a log scale; both on land (ground at least 1 m above the water line) and at
+// least 200 m inside the terrain's edge. Two rays each: one that stops on anything (as the surface job's rays do)
+// and one that stops only on what stops bullets. The seed is fixed, so a rerun on the same world fires the same lines.
+//   ox,oz,og,eye,tx,tz,tg,target,dist,frac_all,hit_all,frac_bullet
+// frac_*: how far along the ray got (1 = clear); hit_all: the class of what stopped the first ray.
+// -rmtSightLines=N sets how many lines (default 20000).
+class RMT_SightLinesJob
+{
+	protected RMT_Context m_Ctx;
+
+	void RMT_SightLinesJob(RMT_Context ctx)
+	{
+		m_Ctx = ctx;
+	}
+
+	protected float Trace(vector from, vector to, int mask, out IEntity hit)
+	{
+		TraceParam p = new TraceParam();
+		p.Start = from;
+		p.End = to;
+		p.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		p.LayerMask = mask;
+		float frac = m_Ctx.m_World.TraceMove(p, null);
+		hit = p.TraceEnt;
+		return frac;
+	}
+
+	int Run()
+	{
+		float t0 = System.GetTickCount();
+		int wanted = m_Ctx.Arg("-rmtSightLines", "20000").ToInt();
+		float minX = m_Ctx.m_vMin[0];
+		float minZ = m_Ctx.m_vMin[2];
+		float maxX = m_Ctx.m_vMax[0];
+		float maxZ = m_Ctx.m_vMax[2];
+		if (wanted < 1 || maxX - minX <= 400 || maxZ - minZ <= 400)
+		{
+			RMT_Context.Say("error|sightlines|nothing to do (no lines asked for, or the world is under 400 m)");
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0);
+			return 1;
+		}
+		string folder = m_Ctx.m_sOut + "/sightlines";
+		RMT_Context.MakeDirs(folder);
+		FileHandle f = FileIO.OpenFile(folder + "/check.csv", FileMode.WRITE);
+		if (!f)
+		{
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0);
+			return 1;
+		}
+		f.Write("ox,oz,og,eye,tx,tz,tg,target,dist,frac_all,hit_all,frac_bullet\n");
+		BaseWorld world = m_Ctx.m_World;
+		Math.Randomize(12345);
+		int made = 0;
+		int tries = 0;
+		while (made < wanted && tries < wanted * 20)
+		{
+			tries++;
+			float ox = Math.RandomFloat(minX + 200, maxX - 200);
+			float oz = Math.RandomFloat(minZ + 200, maxZ - 200);
+			float og = world.GetSurfaceY(ox, oz);
+			if (og < 1)
+				continue;
+			float dist = Math.Pow(10, Math.RandomFloat(1, 3));
+			float ang = Math.RandomFloat(0, Math.PI2);
+			float tx = ox + Math.Sin(ang) * dist;
+			float tz = oz + Math.Cos(ang) * dist;
+			if (tx < minX || tz < minZ || tx > maxX || tz > maxZ)
+				continue;
+			float tg = world.GetSurfaceY(tx, tz);
+			if (tg < 1)
+				continue;
+			float eye = 1;
+			if (Math.RandomFloat01() < 0.3)
+				eye = 2;
+			float target = 1.5;
+			vector from = Vector(ox, og + eye, oz);
+			vector to = Vector(tx, tg + target, tz);
+			IEntity hit;
+			float fa = Trace(from, to, 0xFFFFFFFF, hit);
+			string hitCls = "";
+			if (hit)
+				hitCls = hit.ClassName();
+			IEntity bhit;
+			float fb = Trace(from, to, EPhysicsLayerPresets.Projectile, bhit);
+			string line = string.Format("%1,%2,%3,%4,%5,%6,%7,%8,", ox, oz, og, eye, tx, tz, tg, target);
+			line += string.Format("%1,%2,%3,%4\n", dist, fa, RMT_Context.Q(hitCls), fb);
+			f.Write(line);
+			made++;
+			if (made % 1000 == 0)
+				RMT_Context.Say(string.Format("progress|sightlines|%1|%2", made, wanted));
+		}
+		f.Close();
+		if (made == 0)
+		{
+			RMT_Context.Say("error|sightlines|no land found for the sight lines");
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, System.GetTickCount() - t0);
+			return 1;
+		}
+		string result = "done";
+		if (made < wanted)
+			result = "partial";
+		RMT_Context.Say(string.Format("sightlines|lines=%1|tries=%2", made, tries));
+		m_Ctx.WriteStatus("sightlines", result, 1, 0, 0, made, System.GetTickCount() - t0);
+		return 0;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
 // names/descriptors.csv: every entity carrying a map-descriptor component (town names, map labels, map symbols),
 // with all of that component's settings, so the baker can pick out place names without guessing property names.
 //   entity,class,prefab,name,x,y,z,component,var,value
