@@ -108,7 +108,7 @@ first, and `satellite` needs the terrain export.
 |---|---|
 | `rmt.py` | The command line. Parses arguments; `bake`, `check`, `fieldmap`, `run` and `detect` logic. |
 | `Reforger Map Tools.bat` | Double-click launcher for the desktop app: makes `.venv\`, installs `requirements.txt`, opens the window |
-| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `icon.ico`; `requirements.txt` lists what it and the bakers need |
+| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `theme.py` the look (dark, the field map's yellow), `icon.ico`; `requirements.txt` lists what it and the bakers need |
 | `test_*.py` | Regression tests: `python -m unittest discover -p "test_*.py"` (or Labs → Self-test) |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
 | `rmtlib/addons.py` | Every installed addon and its worlds, from their resource databases; a world's mod dependencies |
@@ -134,6 +134,8 @@ first, and `satellite` needs the terrain export.
 | `blasttest.py` | Live mortar blast test: who goes down or is hurt around a burst ([docs/firetest.md](docs/firetest.md)) |
 | `rockettest.py`, `rocketfit.py` | Live rocket flight test, and the flight and wind tables the site's rocket calculator reads ([docs/firetest.md](docs/firetest.md)) |
 | `launchertest.py` | Live launcher test: soldiers fire the real launchers to check sights, launch scatter and hits ([docs/firetest.md](docs/firetest.md)) |
+| `bullettest.py` | Live bullet flight test: the scoped rifles', machine guns' and vehicle guns' rounds, the site's sight calculator ([docs/firetest.md](docs/firetest.md)) |
+| `rmtlib/prefab.py` | Reads values out of the game's prefabs, following their inheritance |
 | `audible/` | Gunshot audibility from the game's sound files; separate scripts, run from that folder ([docs/audible.md](docs/audible.md)) |
 | `docs/` | The documentation listed above |
 

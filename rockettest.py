@@ -40,31 +40,35 @@ CALM_REPEATS = 3                           # calm shots again, to see if launche
 HEIGHT = 300                               # m above the sea
 
 
-def sea_spots(n, seed=4):
-    """Launch points over open sea with 1.5 km of sea to the north of each, 120 m apart."""
+def sea_spots(n, seed=4, most=400):
+    """Launch points over open sea with 1.5 km of sea to the north of each, 120 m apart. Past `most` they repeat (rounds
+    launched from the same point at different times don't meet)."""
     ter = firetest.Terrain()
     rnd = random.Random(seed)
     out = []
+    want = min(n, most)
     for _ in range(200000):
         x, z = rnd.uniform(300, 12500), rnd.uniform(300, 11000)
         if any(math.hypot(x - a, z - b) < 120 for a, b in out):
             continue
         if all(ter.ground(x, z + dz) <= 0 for dz in range(0, 1600, 100)):
             out.append((x, z))
-            if len(out) == n:
-                return out
+            if len(out) == want:
+                return [out[i % want] for i in range(n)]
     raise SystemExit(f'only {len(out)} sea spots found')
 
 
-def make_plan():
+def make_plan(projectiles=None, elevs=ELEVS, winds=WINDS, repeats=CALM_REPEATS):
+    """projectiles: name -> prefab path, or (prefab path, launch speed coefficient: the weapon's BulletInitSpeedCoef)."""
     from blasttest import prefab_name
     rows = []
-    for ws, wfrom in WINDS:
-        for name, path in ROCKETS.items():
-            for el in ELEVS:
-                for rep in range(CALM_REPEATS if ws == 0 else 1):
-                    rows.append({'id': f'T{len(rows):03d}', 'rocket': name, 'prefab': prefab_name(path), 'elev': el,
-                                 'wspeed': ws, 'wfrom': wfrom, 'rep': rep})
+    for ws, wfrom in winds:
+        for name, what in (projectiles or ROCKETS).items():
+            path, coef = what if isinstance(what, tuple) else (what, 1)
+            for el in elevs:
+                for rep in range(repeats if ws == 0 else 1):
+                    rows.append({'id': f'T{len(rows):04d}', 'rocket': name, 'prefab': prefab_name(path), 'coef': coef,
+                                 'elev': el, 'wspeed': ws, 'wfrom': wfrom, 'rep': rep})
     spots = sea_spots(len(rows))
     for r, (x, z) in zip(rows, spots):
         r['x'], r['z'] = x, z
@@ -100,13 +104,13 @@ def write_plan(rows, block, rel=OUT_REL):
         f.write('id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz,y\n')
         for r in rows:
             # the game's wind override takes where the wind blows TO: the map's "from" + 180
-            f.write(f"{r['id']},{r['prefab']},1,{r['x']:.2f},{r['z']:.2f},{r.get('az', 0):.4f},{r['elev']:.4f},{r['wspeed']},"
-                    f"{(r['wfrom'] + 180) % 360 if r['wspeed'] else 0},1,{r['x']:.2f},{r['z'] + 500:.2f},{HEIGHT}\n")
+            f.write(f"{r['id']},{r['prefab']},{r.get('coef', 1)},{r['x']:.2f},{r['z']:.2f},{r.get('az', 0):.4f},{r['elev']:.4f},{r['wspeed']},"
+                    f"{(r['wfrom'] + 180) % 360 if r['wspeed'] else 0},1,{r['x']:.2f},{r['z'] + 500:.2f},{r.get('y', HEIGHT)}\n")
     json.dump(rows, open(os.path.join(d, 'plan.json'), 'w'), indent=1)
     print(f'plan: {len(rows)} rockets -> {d}')
 
 
-def run(rows=None, rel=OUT_REL, tries=3):
+def run(rows=None, rel=OUT_REL, tries=3, args=('-rmtFireGap=1',)):
     """One game run per wind, so a game that hangs costs one wind, not the lot; winds already done are skipped.
     (The game holds its output files open for the whole run, so a run killed part way leaves nothing.)"""
     from rmtlib.steam import Install
@@ -118,8 +122,8 @@ def run(rows=None, rel=OUT_REL, tries=3):
                 break
             write_plan(block, i, rel)
             code, lines, status = Runner(Install(None)).run_game('firetest', f'{rel}/w{i}', firetest.WORLD,
-                                                                 flag='-rmtFire', args=('-rmtFireGap=1',),
-                                                                 stall=240, limit=1200)
+                                                                 flag='-rmtFire', args=tuple(args),
+                                                                 stall=240, limit=1800)
             print(f'wind {w}: exit', code, 'status', status)
         print(f'wind {w}:', 'done' if done(i, rel) else 'FAILED')
 
@@ -207,7 +211,7 @@ def flights_in(d):
         for r in rows:
             t, x, y, z = float(r['t']), float(r['x']), float(r['y']), float(r['z'])
             vx, vy, vz = float(r['vx']), float(r['vy']), float(r['vz'])
-            fr.append((t, z - p['z'], y - HEIGHT, x - p['x'], vz, vy, vx))  # along (north), up, right (east)
+            fr.append((t, z - p['z'], y - p.get('y', HEIGHT), x - p['x'], vz, vy, vx))  # along (north), up, right (east)
         if fr:
             fr.insert(0, (0.0, 0.0, 0.0, 0.0) + fr[0][4:])  # the launch point (the first frame is a tick after it)
         out.append((p, fr))
