@@ -108,7 +108,7 @@ first, and `satellite` needs the terrain export.
 |---|---|
 | `rmt.py` | The command line. Parses arguments; `bake`, `check`, `fieldmap`, `run` and `detect` logic. |
 | `Reforger Map Tools.bat` | Double-click launcher for the desktop app: makes `.venv\`, installs `requirements.txt`, opens the window |
-| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `icon.ico`; `requirements.txt` lists what it and the bakers need |
+| `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `theme.py` the look (dark, the field map's yellow), `icon.ico`; `requirements.txt` lists what it and the bakers need |
 | `test_*.py` | Regression tests: `python -m unittest discover -p "test_*.py"` (or Labs → Self-test) |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
 | `rmtlib/addons.py` | Every installed addon and its worlds, from their resource databases; a world's mod dependencies |
