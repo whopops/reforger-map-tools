@@ -7,7 +7,10 @@ the folder (mortar, blast and rocket tests, gunshot audibility, the game-file re
 
 ## Starting it
 
-**Double-click `Reforger Map Tools.bat`** in this folder. The first time, it:
+**Without Python:** download the zip from the repo's Releases page, unzip it and double-click
+`Reforger Map Tools.exe` ([packaging.md](packaging.md)). `rmt.exe` beside it is the command line (`rmt.exe detect`).
+
+**From this folder, with Python:** double-click `Reforger Map Tools.bat`. The first time, it:
 1. finds Python 3.10 or newer (`py -3`, then `python`; if there is none it says where to get it);
 2. makes a private Python environment in `.venv\` beside it (nothing is installed into your own Python);
 3. installs `requirements.txt` into it (PySide6, numpy, Pillow, SciPy: a few minutes, shown in its window).
@@ -37,7 +40,7 @@ Windows only, like the rest of the tools. Steam must be running; Workbench and t
 |---|---|
 | **Setup** | Checks this PC (`rmtlib/detect.py`): Steam, the game and the Tools with their build ids, Workbench, the Documents folder (OneDrive-aware), the Workbench profile, Workshop mods, whether Steam is running and Workbench and the game are closed, free disk space, numpy, Pillow, and SciPy. Each problem says how to fix it. A Workbench path can be set by hand. |
 | **World** | Every world in the game and your downloaded mods, read from the addons' own `resourceDatabase.rdb` (`rmtlib/addons.py`), so Workbench isn't started. By default only each terrain's base world (`Arland`, `EmptyArland`, `Cain`, `Eden`, ...) and every mod world; *Show every world* lists the game modes and tools too. *Use a .ent file on disk* takes a world from your own project. |
-| **Data** | What to make, in plain terms (`rmtlib/products.py`): roads, terrain/objects/line of sight, place names, satellite imagery, trees and foliage, the accuracy check. What each needs is added on its own and shown. *Quick test* runs 2 chunks per job. The **output folder** is where manifests and site data go. *Also install into the field map* runs `rmt.py fieldmap` at the end (folder holding `server.py`, and the map's id on the site). *Advanced*: chunk size, stall timeout, launches per job, and `--set` job settings. |
+| **Data** | What to make, in plain terms (`rmtlib/products.py`): roads, terrain/objects/line of sight, place names, satellite imagery, trees and foliage, the accuracy check. Three buttons tick a set in one go: *Field map data* (what the field map shows, installed into it), *Full map export* (everything, satellite included, installed into the field map) and *Clear*. What each needs is added on its own and shown. *Quick test* runs 2 chunks per job. The **output folder** is where manifests and site data go. *Also install into the field map* runs `rmt.py fieldmap` at the end (folder holding `server.py`, and the map's id on the site). *Advanced*: chunk size, stall timeout, launches per job, and `--set` job settings. |
 | **Run** | The plan as a step list, each step's state and progress from the engine's heartbeat (chunks, shots, plants, with a rough time left), the full log, elapsed time, **Cancel**, **Open output folder**, **Save log**. |
 | **Past runs** | Every export in the output folder: world, game build, which jobs finished, what is baked. *Open folder*, *Open raw export*, *Bake again* (the parts its finished jobs allow), *Install into field map*. |
 | **Labs** | The standalone tools, each command with a form for its options (see below). Shows the same command for a terminal, says whether it starts the game, and runs it on the Run page (log, progress, Cancel). *Read the docs*, *Open results folder*, and for the rocket test *Copy rockets.json into the field map*. |
@@ -134,10 +137,5 @@ Not yet tested:
 
 ## Not done yet
 
-- **Packaging**: a PyInstaller build. `rmt_gui.py --worker` already makes the frozen app re-launch itself as the
-  worker, and `rmtlib/paths.py` already moves the addon build to `%LOCALAPPDATA%` when frozen. The Labs scripts
-  (`*.py` beside `rmt.py`, `audible/`) and `rmtgui/icon.ico` would need adding to the bundle as data.
-- **New maps on the site**: installing a world the field map doesn't know still needs its id added to `MAPS` in the
-  field map's `app.js` and `server.py` (gui-plan.md section 7).
 - **Trees without the game**: the profile library from [foliage-opacity-review.md](foliage-opacity-review.md).
   Until then, *Trees and foliage* (and so *install*) runs the game on screen.

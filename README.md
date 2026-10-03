@@ -21,6 +21,7 @@ This file is the quick start and the map of the folder. The detail is in `docs/`
 | [docs/firetest.md](docs/firetest.md) | The mortar and rocket tools: `firetest.py` (live-fire test), `blasttest.py` (blast test), `rockettest.py` (rocket flights) and the `ballistics` job |
 | [docs/audible.md](docs/audible.md) | `audible/`: how far gunshots are heard, from the game's sound files |
 | [docs/gui-plan.md](docs/gui-plan.md) | The plan behind the desktop app, and what is still to do |
+| [docs/packaging.md](docs/packaging.md) | The desktop app as a zip with no Python needed: how it is built and released |
 | [docs/foliage-opacity-review.md](docs/foliage-opacity-review.md) | Review: measuring foliage opacity without screenshots (not built) |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Hard rules, known failures and what to do about them |
 

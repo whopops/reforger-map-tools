@@ -358,6 +358,19 @@ class DataPage(QWidget):
 
         box = QGroupBox("What to make")
         grid = QVBoxLayout(box)
+        presets = QHBoxLayout()
+        for label, tip, picks, install in (
+                ("Field map data", "What the field map shows: roads, line of sight, place names and trees, installed "
+                 "into the field map.", products.INSTALL_NEEDS, True),
+                ("Full map export", "Everything this tool can make for the map, satellite imagery included, "
+                 "installed into the field map. A large map takes hours.", products.ORDER, True),
+                ("Clear", "Untick everything.", [], False)):
+            b = QPushButton(label)
+            b.setToolTip(tip)
+            b.clicked.connect(lambda _=False, p=picks, i=install: self.preset(p, i))
+            presets.addWidget(b)
+        presets.addStretch(1)
+        grid.addLayout(presets)
         self.boxes = {}
         saved = (s.value("products", "roads,los,places") or "").split(",")
         for key in products.ORDER:
@@ -441,6 +454,17 @@ class DataPage(QWidget):
 
     def chosen(self):
         return [k for k, cb in self.boxes.items() if cb.isChecked()]
+
+    def preset(self, picks, install):
+        """Tick exactly these products (and the install box) in one go."""
+        for key, cb in self.boxes.items():
+            cb.blockSignals(True)
+            cb.setChecked(key in picks)
+            cb.blockSignals(False)
+        self.install.blockSignals(True)
+        self.install.setChecked(install)
+        self.install.blockSignals(False)
+        self.update_plan()
 
     def world_changed(self, world):
         if world:

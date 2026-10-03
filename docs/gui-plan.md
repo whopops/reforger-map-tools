@@ -4,7 +4,8 @@ Status: a first version is built ([gui.md](gui.md)). Done: phase 1 (engine API: 
 `--workspace`, `run`, `detect`, the addon index), the window for phases 2 to 4 (Setup, World, Data, Run, Runs),
 phase 6 (Labs: fire, blast and rocket tests, audibility, game files, self-tests) and a double-click launcher
 (`Reforger Map Tools.bat`, which makes `.venv\`) in place of packaging for now.
-Not done: a live run from the window, packaging (phase 5).
+The Data page has *Field map data* and *Full map export* buttons. Not done: a live run from the window has not been
+tried against Workbench yet; packaging (phase 5) is built: a zip on GitHub Releases ([packaging.md](packaging.md)).
 Changed from the plan: world listing reads the addons' resource databases instead of starting Workbench; errors stay
 `SystemExit` messages but become `error` events with `--events` (no `RmtError` classes yet); everon-3d-map was merged
 into arma-map, so `viewer3d` below is now part of `fieldmap`.

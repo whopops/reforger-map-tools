@@ -3,8 +3,9 @@
   Double-click "Reforger Map Tools.bat" (sets everything up the first time), or:
   python rmt_gui.py          (needs PySide6, numpy, Pillow and SciPy: pip install -r requirements.txt)
 
-The packaged app (PyInstaller) is this same file. It re-launches itself in a child process to do the work, so the
-window stays responsive and Cancel can stop everything. See docs/gui.md.
+The packaged app (PyInstaller, ReforgerMapTools.spec) is this same file twice: "Reforger Map Tools.exe" (the window)
+and rmt.exe (a console exe: the command line, and the child process the window starts to do the work, so the window
+stays responsive and Cancel can stop everything). See docs/gui.md and docs/packaging.md.
   --worker <rmt.py arguments>                       rmt.py's commands
   [--stderr-info] --script <file.py> <arguments>    one of the Labs scripts (firetest.py, audible/audible.py, ...), run
                                                     as __main__ in its own folder, its output as rmt.py --events lines
@@ -79,6 +80,10 @@ def _crash_log(text):
         return None
 
 
+def _is_cli_exe():
+    return getattr(sys, "frozen", False) and os.path.basename(sys.executable).lower() == "rmt.exe"
+
+
 def main():
     if HERE not in sys.path:
         sys.path.insert(0, HERE)
@@ -89,6 +94,9 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--worker":
         import rmt
         return rmt.main(sys.argv[2:])
+    if _is_cli_exe() and not (len(sys.argv) > 2 and sys.argv[1] in ("--script", "--module", "--stderr-info")):
+        import rmt  # the packaged rmt.exe is the command line: rmt.exe detect, rmt.exe run Arland ...
+        return rmt.main(sys.argv[1:])
     if len(sys.argv) > 2 and sys.argv[1] in ("--script", "--module", "--stderr-info"):
         return run_script(sys.argv[1:])
     try:
