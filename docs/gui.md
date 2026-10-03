@@ -7,7 +7,10 @@ the folder (mortar, blast and rocket tests, gunshot audibility, the game-file re
 
 ## Starting it
 
-**Double-click `Reforger Map Tools.bat`** in this folder. The first time, it:
+**Without Python:** download the zip from the repo's Releases page, unzip it and double-click
+`Reforger Map Tools.exe` ([packaging.md](packaging.md)). `rmt.exe` beside it is the command line (`rmt.exe detect`).
+
+**From this folder, with Python:** double-click `Reforger Map Tools.bat`. The first time, it:
 1. finds Python 3.10 or newer (`py -3`, then `python`; if there is none it says where to get it);
 2. makes a private Python environment in `.venv\` beside it (nothing is installed into your own Python);
 3. installs `requirements.txt` into it (PySide6, numpy, Pillow, SciPy: a few minutes, shown in its window).
@@ -134,6 +137,5 @@ Not yet tested:
 
 ## Not done yet
 
-- **Packaging**: proposed in [packaging.md](packaging.md), not built yet.
 - **Trees without the game**: the profile library from [foliage-opacity-review.md](foliage-opacity-review.md).
   Until then, *Trees and foliage* (and so *install*) runs the game on screen.

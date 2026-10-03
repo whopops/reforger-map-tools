@@ -25,17 +25,24 @@ def _python():
     return exe
 
 
+def _frozen_worker():
+    """The packaged app's console exe, rmt.exe beside the window's exe: a windowless exe may have no output pipe, so
+    the worker is the console one (Qt starts it without a console window)."""
+    exe = os.path.join(os.path.dirname(sys.executable), "rmt.exe")
+    return exe if os.path.isfile(exe) else sys.executable
+
+
 def worker_command(args):
-    """The command that runs rmt.py with these arguments: the packaged app re-launches itself with --worker."""
+    """The command that runs rmt.py with these arguments: the packaged app runs rmt.exe --worker."""
     if paths.FROZEN:
-        return [sys.executable, "--worker", *args]
+        return [_frozen_worker(), "--worker", *args]
     return [_python(), "-u", os.path.join(paths.REPO, "rmt.py"), *args]
 
 
 def script_command(args):
     """The command that runs a Labs script: rmt_gui.py --script/--module ... (see rmt_gui.run_script)."""
     if paths.FROZEN:
-        return [sys.executable, *args]
+        return [_frozen_worker(), *args]
     return [_python(), "-u", os.path.join(paths.REPO, "rmt_gui.py"), *args]
 
 
