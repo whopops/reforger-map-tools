@@ -5,7 +5,7 @@ The pages, in the order a first run goes through them:
   World  every world the installed addons hold (rmtlib/addons.py; no Workbench launch needed), or a .ent on disk
   Data   what to make (rmtlib/products.py), where to put it, and whether to install it into the field map
   Run    the plan, live progress from the engine's heartbeat, the log, Cancel
-  Runs   every export in the output folder: open it, bake it again, install it
+  Past runs  every export in the output folder: open it, bake it again, install it
   Labs   the standalone tools (rmtgui/labs.py): mortar, blast and rocket tests, gunshot audibility, game files, tests
 
 All the work happens in a child process (`rmt.py --events run ...` or `rmt_gui.py --script ...`, rmtgui/worker.py);
@@ -33,30 +33,57 @@ from PySide6.QtWidgets import (
 from rmtlib import addons, detect, paths, products
 from rmtlib.fieldmap import default_field_map, site_map_id
 
-from . import labs
+from . import labs, theme
 from .worker import Worker
 
 APP = "Reforger Map Tools"
-OK, WARN, FAIL = QColor("#2e8b57"), QColor("#c88a00"), QColor("#c0392b")
-STATE_COLOURS = {"ok": OK, "warn": WARN, "fail": FAIL, "done": OK, "failed": FAIL, "start": QColor("#2f6fb3"),
-                 "skipped": QColor("#888888")}
-STATE_TEXT = {"ok": "OK", "warn": "Check", "fail": "Problem"}
+OK, WARN, FAIL, GREY = QColor(theme.OK), QColor(theme.WARN), QColor(theme.FAIL), QColor(theme.GREY)
+STATE_COLOURS = {"ok": OK, "warn": WARN, "fail": FAIL, "done": OK, "failed": FAIL, "start": QColor(theme.BLUE),
+                 "skipped": GREY}
+STATE_TEXT = {"ok": "●  OK", "warn": "●  Check", "fail": "●  Problem"}
+STEP_TEXT = {"start": "●  running", "done": "✓  done", "failed": "✕  failed", "skipped": "–  skipped"}
+FINISHED = (STEP_TEXT["done"], STEP_TEXT["failed"], STEP_TEXT["skipped"])
+WAITING = "○  waiting"
 
 
 def heading(text):
     label = QLabel(text)
     f = label.font()
-    f.setPointSize(f.pointSize() + 5)
+    f.setPointSize(f.pointSize() + 8)
     f.setBold(True)
     label.setFont(f)
     return label
+
+
+def page(widget):
+    """A page's outer layout, with room around the edges."""
+    lay = QVBoxLayout(widget)
+    lay.setContentsMargins(28, 22, 28, 20)
+    lay.setSpacing(10)
+    return lay
+
+
+def scrolled(widget):
+    area = QScrollArea()
+    area.setWidgetResizable(True)
+    area.setFrameShape(QFrame.Shape.NoFrame)
+    area.setWidget(widget)
+    return area
+
+
+def tree(headers):
+    t = QTreeWidget()
+    t.setHeaderLabels(headers)
+    t.setRootIsDecorated(False)
+    t.setAlternatingRowColors(True)
+    return t
 
 
 def note(text):
     label = QLabel(text)
     label.setWordWrap(True)
     label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    label.setStyleSheet("color: palette(placeholder-text);")
+    label.setObjectName("pageNote")
     return label
 
 
@@ -125,13 +152,11 @@ class SetupPage(QWidget):
         super().__init__()
         self.win = win
         self.checks = []
-        lay = QVBoxLayout(self)
+        lay = page(self)
         lay.addWidget(heading("Setup"))
         lay.addWidget(note("What this PC has. Everything here is found on its own; nothing is changed. Exports need "
                            "Steam running and both Workbench and the game closed."))
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Check", "State", "Details"])
-        self.tree.setRootIsDecorated(False)
+        self.tree = tree(["Check", "State", "Details"])
         self.tree.setWordWrap(True)
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -193,12 +218,11 @@ class SetupPage(QWidget):
             text = c["value"] + (f"\n{c['hint']}" if c["hint"] else "")
             item = QTreeWidgetItem([c["label"], STATE_TEXT[c["state"]], text])
             item.setForeground(1, QBrush(STATE_COLOURS[c["state"]]))
-            if c["hint"]:
-                item.setToolTip(2, c["hint"])
+            item.setToolTip(2, text)
             self.tree.addTopLevelItem(item)
         bad = [c for c in self.checks if c["state"] == "fail"]
-        self.summary.setText("Ready." if not bad else f"{len(bad)} problem(s) to fix before a run.")
-        self.summary.setStyleSheet(f"color: {(FAIL if bad else OK).name()};")
+        theme.pill(self.summary, "fail" if bad else "ok")
+        self.summary.setText("Ready" if not bad else f"{len(bad)} problem(s) to fix before a run")
         return self.checks
 
     def blocking(self):
@@ -213,7 +237,7 @@ class WorldPage(QWidget):
         self.win = win
         self.worlds = []
         self.disk_world = None
-        lay = QVBoxLayout(self)
+        lay = page(self)
         lay.addWidget(heading("World"))
         lay.addWidget(note("Every world in the game and your downloaded mods, read from their files (Workbench isn't "
                            "started). A mod map brings the mods it depends on along. By default only each map's base "
@@ -228,12 +252,11 @@ class WorldPage(QWidget):
         row.addWidget(self.show_all)
         lay.addLayout(row)
 
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["World", "Addon", "Source", "Resource"])
-        self.tree.setRootIsDecorated(False)
+        self.tree = tree(["World", "Addon", "Source", "Resource"])
         self.tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.tree.setSortingEnabled(True)
-        self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        for col in (0, 1, 2):
+            self.tree.header().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.itemSelectionChanged.connect(self.selected_changed)
         self.tree.itemDoubleClicked.connect(lambda *_: self.win.go("data"))
         lay.addWidget(self.tree, 1)
@@ -248,7 +271,8 @@ class WorldPage(QWidget):
         row.addStretch(1)
         self.choice = QLabel("No world chosen.")
         row.addWidget(self.choice)
-        nxt = QPushButton("Next: choose data →")
+        nxt = QPushButton("Next: choose data  →")
+        nxt.setObjectName("primary")
         nxt.clicked.connect(lambda: self.win.go("data"))
         row.addWidget(nxt)
         lay.addLayout(row)
@@ -327,7 +351,7 @@ class DataPage(QWidget):
         super().__init__()
         self.win = win
         s = win.settings
-        lay = QVBoxLayout(self)
+        lay = page(self)
         lay.addWidget(heading("Data"))
         self.world_label = QLabel()
         lay.addWidget(self.world_label)
@@ -372,9 +396,9 @@ class DataPage(QWidget):
         form.addRow("Map id on the site", self.map_id)
         lay.addWidget(box)
 
+        show_adv = QCheckBox("Show advanced settings")
+        lay.addWidget(show_adv)
         adv = QGroupBox("Advanced")
-        adv.setCheckable(True)
-        adv.setChecked(False)
         inner = QWidget()
         f2 = QFormLayout(inner)
         self.tile = QSpinBox()
@@ -398,8 +422,8 @@ class DataPage(QWidget):
         f2.addRow("Settings", self.extra)
         v = QVBoxLayout(adv)
         v.addWidget(inner)
-        inner.setVisible(False)
-        adv.toggled.connect(inner.setVisible)
+        adv.setVisible(False)
+        show_adv.toggled.connect(adv.setVisible)
         lay.addWidget(adv)
 
         self.plan_label = note("")
@@ -408,7 +432,8 @@ class DataPage(QWidget):
         row = QHBoxLayout()
         row.addStretch(1)
         self.start = QPushButton("Start")
-        self.start.setMinimumWidth(140)
+        self.start.setObjectName("primary")
+        self.start.setMinimumWidth(160)
         self.start.setDefault(True)
         self.start.clicked.connect(self.win.start_run)
         row.addWidget(self.start)
@@ -420,7 +445,7 @@ class DataPage(QWidget):
     def world_changed(self, world):
         if world:
             arg, name, slug = world
-            self.world_label.setText(f"World: <b>{name}</b>")
+            self.world_label.setText(f"World: <b style='color:{theme.ACCENT}'>{name}</b>")
             self.map_id.setText(site_map_id(self.fieldmap.text().strip(), slug) or "" if slug else "")
             if not self.map_id.text():
                 self.map_id.setText(name.lower())
@@ -477,21 +502,23 @@ class RunPage(QWidget):
         self.step_started = {}
         self.site = None
         self.errors = []
-        lay = QVBoxLayout(self)
+        lay = page(self)
         lay.addWidget(heading("Run"))
         self.title = QLabel("Nothing running.")
         self.title.setWordWrap(True)
+        f = self.title.font()
+        f.setPointSize(f.pointSize() + 1)
+        self.title.setFont(f)
         lay.addWidget(self.title)
 
         split = QSplitter(Qt.Orientation.Vertical)
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Step", "State", "Progress"])
-        self.tree.setRootIsDecorated(False)
+        self.tree = tree(["Step", "State", "Progress"])
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         split.addWidget(self.tree)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(20000)
+        self.log.setObjectName("log")
         self.log.setFont(QFont("Consolas", 9))
         split.addWidget(self.log)
         split.setSizes([260, 340])
@@ -543,7 +570,7 @@ class RunPage(QWidget):
         self.tick()
         self.cancel_btn.setEnabled(False)
         for item in self.items.values():
-            if item.text(1) == "running":
+            if item.text(1) == STEP_TEXT["start"]:
                 self.set_state(item, "failed" if code else "done")
         if code == -1:
             self.title.setText(self.title.text() + (" — cancelled. Run it again to resume: finished jobs and chunks "
@@ -579,10 +606,9 @@ class RunPage(QWidget):
             self.log.appendPlainText(text)
 
     def set_state(self, item, state):
-        text = {"start": "running", "done": "done", "failed": "failed", "skipped": "skipped"}.get(state, state)
-        item.setText(1, text)
-        item.setForeground(1, QBrush(STATE_COLOURS.get(state, QColor("#888888"))))
-        self.bar.setValue(sum(1 for i in self.items.values() if i.text(1) in ("done", "failed", "skipped")))
+        item.setText(1, STEP_TEXT.get(state, state))
+        item.setForeground(1, QBrush(STATE_COLOURS.get(state, GREY)))
+        self.bar.setValue(sum(1 for i in self.items.values() if i.text(1) in FINISHED))
 
     def on_event(self, ev):
         t = ev.get("t")
@@ -590,8 +616,8 @@ class RunPage(QWidget):
             self.append(ev.get("level", "info"), ev.get("text", ""))
         elif t == "plan":
             for s in ev["steps"]:
-                item = QTreeWidgetItem([s["label"] + ("  (game)" if s.get("game") else ""), "waiting", ""])
-                item.setForeground(1, QBrush(QColor("#888888")))
+                item = QTreeWidgetItem([s["label"] + ("  (game)" if s.get("game") else ""), WAITING, ""])
+                item.setForeground(1, QBrush(GREY))
                 self.tree.addTopLevelItem(item)
                 self.items[s["id"]] = item
             self.bar.setRange(0, max(1, len(ev["steps"])))
@@ -609,7 +635,7 @@ class RunPage(QWidget):
             done, total = ev["done"], ev["total"]
             if not total:  # a count with no known end (the gun test's rounds)
                 item.setText(2, f"{done} {ev.get('unit', '')}")
-                if item.text(1) == "waiting":
+                if item.text(1) == WAITING:
                     self.set_state(item, "start")
                 return
             text = f"{done} / {total} {ev.get('unit', '')}"
@@ -621,7 +647,7 @@ class RunPage(QWidget):
                 left = int(rate * (total - done))
                 text += f"   about {left // 60} min left" if left >= 60 else f"   about {left} s left"
             item.setText(2, text)
-            if item.text(1) == "waiting":
+            if item.text(1) == WAITING:
                 self.set_state(item, "start")
         elif t == "error":
             self.errors.append(ev.get("message", ""))
@@ -666,13 +692,11 @@ class RunsPage(QWidget):
     def __init__(self, win):
         super().__init__()
         self.win = win
-        lay = QVBoxLayout(self)
-        lay.addWidget(heading("Runs"))
+        lay = page(self)
+        lay.addWidget(heading("Past runs"))
         self.where = note("")
         lay.addWidget(self.where)
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["World", "Game build", "Updated", "Exported", "Baked"])
-        self.tree.setRootIsDecorated(False)
+        self.tree = tree(["World", "Game build", "Updated", "Exported", "Baked"])
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         lay.addWidget(self.tree, 1)
         row = QHBoxLayout()
@@ -759,14 +783,15 @@ class LabsPage(QWidget):
         super().__init__()
         self.win = win
         self.widgets = []
-        lay = QVBoxLayout(self)
+        lay = page(self)
         lay.addWidget(heading("Labs"))
         lay.addWidget(note("The other tools in this folder: tests that measure the game for the field map's "
                            "calculators, and helpers. They work on Everon and the field map's data (the field map "
                            "folder on the Data page)."))
         body = QHBoxLayout()
         self.list = QListWidget()
-        self.list.setFixedWidth(190)
+        self.list.setFixedWidth(210)
+        self.list.ensurePolished()  # take the theme's row padding before the rows are laid out
         for t in labs.TOOLS:
             item = QListWidgetItem(t["title"])
             item.setData(Qt.ItemDataRole.UserRole, t["key"])
@@ -816,7 +841,8 @@ class LabsPage(QWidget):
         row.addWidget(self.copy_btn)
         row.addStretch(1)
         self.run_btn = QPushButton("Run")
-        self.run_btn.setMinimumWidth(140)
+        self.run_btn.setObjectName("primary")
+        self.run_btn.setMinimumWidth(160)
         self.run_btn.clicked.connect(self.start)
         row.addWidget(self.run_btn)
         right.addLayout(row)
@@ -929,10 +955,10 @@ class LabsPage(QWidget):
             mins = f", about {c['minutes']} minutes" if c["minutes"] else ""
             self.game_note.setText(f"Runs the game on screen{mins}. Steam must be running and the game closed; leave "
                                    "the PC alone meanwhile.")
-            self.game_note.setStyleSheet(f"color: {WARN.name()};")
+            self.game_note.setStyleSheet(f"color: {theme.WARN};")
         else:
             self.game_note.setText("Nothing is launched: Python only.")
-            self.game_note.setStyleSheet(f"color: {OK.name()};")
+            self.game_note.setStyleSheet(f"color: {theme.OK};")
 
     # -- buttons
     def results_folder(self):
@@ -996,8 +1022,8 @@ class LabsPage(QWidget):
 
 # ------------------------------------------------------------------------------------------------ window
 class MainWindow(QMainWindow):
-    PAGES = [("setup", "1  Setup"), ("world", "2  World"), ("data", "3  Data"), ("run", "4  Run"), ("runs", "Runs"),
-             ("labs", "Labs")]
+    PAGES = [("setup", "1   Setup"), ("world", "2   World"), ("data", "3   Data"), ("run", "4   Run"),
+             (None, "MORE"), ("runs", "Past runs"), ("labs", "Labs")]  # None: a section title in the list
 
     def __init__(self):
         super().__init__()
@@ -1017,20 +1043,41 @@ class MainWindow(QMainWindow):
         self.labs = LabsPage(self)
         self.pages = {"setup": self.setup, "world": self.world, "data": self.data, "run": self.run, "runs": self.runs,
                       "labs": self.labs}
+        self.frames = dict(self.pages, data=scrolled(self.data))  # the Data page is taller than a small window
 
+        side = QFrame()
+        side.setObjectName("sidebar")
+        side.setFixedWidth(210)
+        v = QVBoxLayout(side)
+        v.setContentsMargins(0, 22, 0, 14)
+        v.setSpacing(0)
+        brand = QLabel(APP)
+        brand.setObjectName("brand")
+        brand.setContentsMargins(22, 0, 14, 0)
+        v.addWidget(brand)
+        sub = QLabel("Map data for the field map")
+        sub.setObjectName("brandSub")
+        sub.setContentsMargins(22, 2, 14, 16)
+        v.addWidget(sub)
         self.nav = QListWidget()
-        self.nav.setFixedWidth(150)
+        self.nav.setObjectName("nav")
         self.nav.setFrameShape(QFrame.Shape.NoFrame)
         self.stack = QStackedWidget()
         for key, label in self.PAGES:
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, key)
+            if key is None:
+                item.setFlags(Qt.ItemFlag.NoItemFlags)
+            else:
+                self.stack.addWidget(self.frames[key])
             self.nav.addItem(item)
-            self.stack.addWidget(self.pages[key])
         self.nav.currentRowChanged.connect(self.page_changed)
+        v.addWidget(self.nav, 1)
         body = QWidget()
         h = QHBoxLayout(body)
-        h.addWidget(self.nav)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(0)
+        h.addWidget(side)
         h.addWidget(self.stack, 1)
         self.setCentralWidget(body)
 
@@ -1059,8 +1106,10 @@ class MainWindow(QMainWindow):
         self.nav.setCurrentRow([k for k, _ in self.PAGES].index(key))
 
     def page_changed(self, row):
-        self.stack.setCurrentIndex(row)
         key = self.PAGES[row][0]
+        if key is None:
+            return
+        self.stack.setCurrentWidget(self.frames[key])
         if key == "runs":
             self.runs.load()
         if key == "data":
@@ -1166,7 +1215,7 @@ class MainWindow(QMainWindow):
 def main(argv=None):
     app = QApplication(sys.argv if argv is None else argv)
     app.setApplicationName(APP)
-    app.setStyle("Fusion")
+    theme.apply(app)
 
     def on_error(kind, value, tb):
         # a bug in a button's handler: show it instead of losing it (pythonw has no console)

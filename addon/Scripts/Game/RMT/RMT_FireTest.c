@@ -9,6 +9,10 @@
 //                          through changes some time after the weather manager reports the new wind)
 //   -rmtFireGap=<s>        a fixed pause between rounds (a crew re-laying and loading after each), instead of a random
 //                          GAP_MIN-GAP_MAX
+//   -rmtFireTraceDt=<s>    write a traced flight's frames no closer together than this (default 0: every frame); a
+//                          bullet's 10 s at the game's frame rate is otherwise thousands of lines
+//   -rmtFireMaxT=<s>       stop following a round after this long, recording where it is then (default 90; bullet
+//                          tests stop at 10 s, past any range a scope is set for)
 // plan.csv (header line, then one line per aim): id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz
 //   prefab: the shell's resource name; coef: its charge ring's speed coefficient; x,z: the mortar (it fires from 1.3 m
 //   above the ground there, where the M252's muzzle is); az: compass bearing in degrees; elev: degrees above the
@@ -38,6 +42,7 @@ class RMT_FireShot
 	vector m_vV0;
 	bool m_bTrace;
 	float m_fT;
+	float m_fTraced = -1;   // when its last frame was written
 }
 
 class RMT_FireTestEntity : GenericEntity
@@ -67,6 +72,8 @@ class RMT_FireTestEntity : GenericEntity
 	const float GAP_MAX = 3;
 	protected float m_fGap = 1;
 	protected float m_fFixedGap = -1;   // -rmtFireGap: every gap this long instead
+	protected float m_fTraceDt = 0;     // -rmtFireTraceDt
+	protected float m_fMaxT = 90;       // -rmtFireMaxT
 	const int MAX_FLYING = 40;
 
 	//------------------------------------------------------------------------------------------------
@@ -100,6 +107,12 @@ class RMT_FireTestEntity : GenericEntity
 		string gap;
 		if (System.GetCLIParam("rmtFireGap", gap) && gap != "")
 			m_fFixedGap = gap.ToFloat();
+		string traceDt;
+		if (System.GetCLIParam("rmtFireTraceDt", traceDt) && traceDt != "")
+			m_fTraceDt = traceDt.ToFloat();
+		string maxT;
+		if (System.GetCLIParam("rmtFireMaxT", maxT) && maxT != "")
+			m_fMaxT = maxT.ToFloat();
 		FileHandle f = FileIO.OpenFile(m_sDir + "/plan.csv", FileMode.READ);
 		if (!f)
 		{
@@ -246,8 +259,9 @@ class RMT_FireTestEntity : GenericEntity
 			vector p = s.m_Shell.GetOrigin();
 			if (s.m_Move)
 				s.m_vVel = s.m_Move.GetVelocity();
-			if (s.m_bTrace)
+			if (s.m_bTrace && (s.m_fTraced < 0 || s.m_fT - s.m_fTraced >= m_fTraceDt))
 			{
+				s.m_fTraced = s.m_fT;
 				string head = string.Format("%1,%2,%3,", m_aPlan[s.m_iPlan][0], s.m_iRound, F(s.m_fT));
 				m_Trace.WriteLine(head + string.Format("%1,%2,%3,%4,%5,%6", F(p[0]), F(p[1]), F(p[2]), F(s.m_vVel[0]), F(s.m_vVel[1]), F(s.m_vVel[2])));
 			}
@@ -260,6 +274,14 @@ class RMT_FireTestEntity : GenericEntity
 				continue;
 			}
 			s.m_vLast = p;
+			if (m_fMaxT < 90 && s.m_fT > m_fMaxT)
+			{
+				// followed as long as wanted: where it is now is where it "landed"
+				Land(s, p);
+				delete s.m_Shell;
+				m_aFlying.Remove(i);
+				continue;
+			}
 			if (s.m_fT > 90)
 			{
 				Say(string.Format("fire|lost|%1|%2", m_aPlan[s.m_iPlan][0], s.m_iRound));
