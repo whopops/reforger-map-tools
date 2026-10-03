@@ -95,7 +95,7 @@ first, and `satellite` needs the terrain export.
 | Run record (`manifest.json`) and baked site data | `out/<slug>/<build>/` and `out/<slug>/<build>/site/` in this repo (or in the `--workspace` folder; the app's output folder) |
 | World list cache | `out/worlds.txt` (only `rmt.py worlds` uses it now: names resolve through the addons' resource databases first) |
 | Engine sight lines for `check` | `<raw folder>\sightlines\check.csv` |
-| The website's copy (`fieldmap`) | `arma-map\everon-map\static\data\maps\<id>\` and `static\3d\maps.json` (beside this repo's folder by default) |
+| The website's copy (`fieldmap`) | `arma-map\everon-map\static\data\maps\<id>\`, with its `map.json` (beside this repo's folder by default) |
 | Generated addon copy | `.build/` (rebuilt every run; do not edit) |
 
 `<slug>` is the world's file name in lower case plus the first six characters of its GUID (`arland-a9806a`);

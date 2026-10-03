@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from rmtlib import addons, detect, paths, products
-from rmtlib.fieldmap import MAP_IDS, default_field_map
+from rmtlib.fieldmap import default_field_map, site_map_id
 
 from . import labs, theme
 from .worker import Worker
@@ -446,7 +446,7 @@ class DataPage(QWidget):
         if world:
             arg, name, slug = world
             self.world_label.setText(f"World: <b style='color:{theme.ACCENT}'>{name}</b>")
-            self.map_id.setText(MAP_IDS.get(slug, "") if slug else "")
+            self.map_id.setText(site_map_id(self.fieldmap.text().strip(), slug) or "" if slug else "")
             if not self.map_id.text():
                 self.map_id.setText(name.lower())
         else:
@@ -763,7 +763,7 @@ class RunsPage(QWidget):
             return
         d = self.win.data
         target = d.fieldmap.text().strip()
-        map_id = MAP_IDS.get(cur[1]["slug"]) or d.map_id.text().strip()
+        map_id = site_map_id(target, cur[1]["slug"]) or d.map_id.text().strip()
         if not target or not os.path.isfile(os.path.join(target, "server.py")):
             QMessageBox.warning(self, APP, "Set the field map folder (the one holding server.py) on the Data page.")
             return

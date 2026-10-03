@@ -43,7 +43,7 @@ These are the changes needed in `rmtlib` before any GUI is useful. Most are smal
 | 2 | Errors are `SystemExit("message")` in `steam.py` and `export.py` | A small `RmtError` hierarchy (`NotInstalled`, `WorldNotFound`, `WorldDidNotLoad`, `JobFailed`, ...) with a message and a hint. The CLI prints it and exits; the GUI shows it |
 | 3 | Progress is `print`. `export` and the bakers take `log=print` in places only | One `emit(event)` function. Default prints the same text as now; with `--events jsonl` it prints JSON lines (section 4) |
 | 4 | No cancel | A cancel flag checked in the supervise loop and between bakes. Hard cancel is killing the child process, so soft cancel is only needed in bakers |
-| 5 | `fieldmap.MAP_IDS`, `viewer3d.MAPS`, `viewer3d.FIELD_REFERENCE` and `tuned_colours` are hard-wired to Everon, Kolguyev and Arland | Take a map descriptor (id, title, camera start) from the caller; keep the three as defaults. See section 7 for the arma-map side |
+| 5 | `fieldmap.MAP_IDS`, `viewer3d.MAPS`, `viewer3d.FIELD_REFERENCE` and `tuned_colours` are hard-wired to Everon, Kolguyev and Arland | Done for `fieldmap`: it reads the map id, title and camera start from the site's `map.json` files (section 7). `viewer3d` is gone |
 | 6 | Sibling-folder guesses: `..\..\arma-map\everon-map`, `..\everon-3d-map` | Remember the folders the user picks (settings file). Keep the guesses as first suggestions |
 | 7 | Workbench writes raw output only under its profile (`$profile:`, a hard rule: any other path pops a modal dialog) | Keep raw output there; the workspace holds manifest, site and a copy or link of what is needed. Spike: does `-profile <dir>` work for Workbench and the game? If yes, raw output can go straight to the workspace |
 | 8 | The game-side jobs change the game's video settings and restore them afterwards | Back the settings file up on start and restore on next app launch if a run died (the GUI is more likely to be killed than a terminal) |
@@ -119,16 +119,11 @@ ids and the tail of `console.log` for bug reports.
 7. **Runs**: every export found under the workspace (world, game build, state, size), with *Resume*, *Re-bake only*
    (after a baker changed) and *Delete raw data*.
 
-## 7. The arma-map side (needs a decision)
+## 7. The arma-map side (done)
 
-`fieldmap` and `viewer3d` work for the three known maps. A new map needs two more things on the website side that the
-GUI can not safely do by editing code:
-
-- arma-map keeps its map list in `static/app.js` and `server.py` (`MAPS`). The 3D viewer has `data/maps.json`
-  (already written by `viewer3d.install`).
-- Proposal: the GUI writes a small `map.json` (id, title, world, size, tile, start, hasTrees, source build) into
-  each map's data folder, and arma-map reads its map list from the folders it finds. That is a change in the
-  arma-map repo, not here. Until then the GUI shows the exact lines to paste.
+`fieldmap` writes a `map.json` into each map's data folder (`static/data/maps/<id>/map.json`: title, slug, order,
+size, grid, camera start, hasTrees), and arma-map's server lists every folder that has one, for the field map's join
+screen and the 3D view alike. A new map needs no code change on either side: install it with `--as <id>`.
 
 ## 8. Data products and what they run
 

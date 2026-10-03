@@ -1,5 +1,6 @@
 """Regression checks for installation and foliage dependency failures."""
 import builtins
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -31,6 +32,44 @@ class BakeRegressionTests(unittest.TestCase):
             (src / "tile.bin").write_bytes(b"same"); (dst / "tile.bin").write_bytes(b"same")
             with patch.object(fieldmap.shutil, "copy2", side_effect=AssertionError("copied unchanged file")):
                 fieldmap.copy_tree(str(src), str(dst), folder, lambda _: None)
+
+    def fake_bake(self, folder, slug):
+        site = Path(folder, slug, "site"); raw = Path(folder, slug, "raw")
+        for d in ("foliage", "los", "tiles/0/0"):
+            (site / d).mkdir(parents=True, exist_ok=True)
+        raw.mkdir(parents=True)
+        for name in ("foliage/foliage_profiles.json", "roads.json", "places.json", "foliage.json"):
+            (site / name).write_text("{}")
+        (site / "tiles/0/0/0.jpg").write_bytes(b"jpg")
+        (site / "los/index.json").write_text(json.dumps({
+            "grid": {"x0": 0, "z0": 0, "tile": 500, "cols": 2, "rows": 2}, "tiles": ["0_0", "1_1"],
+            "light": {"cols": 100, "cell": 10}, "terrain": {"unit": 0.01}}))
+        (raw / "probe.json").write_text(json.dumps({"min": [0, 0, 0], "max": [1000, 50, 1000]}))
+        return {"slug": slug, "world": "Isle", "raw": str(raw)}, str(site)
+
+    def test_install_writes_map_json_and_keeps_what_the_bake_does_not_measure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            field_map = Path(folder, "everon-map")
+            old = field_map / "static/data/maps/everon"
+            old.mkdir(parents=True)
+            (old / "map.json").write_text(json.dumps({"title": "Everon", "slug": "eden-1", "order": 1, "world": 1,
+                                                       "start": [10, 20], "upstream": {"url": "https://x"}}))
+            self.assertEqual(fieldmap.site_map_id(str(field_map), "eden-1"), "everon")
+            self.assertIsNone(fieldmap.site_map_id(str(field_map), "isle-2"))
+            m, site = self.fake_bake(folder, "eden-1")
+            fieldmap.install(m, site, str(field_map), "everon", log=lambda _: None)
+            info = json.loads((old / "map.json").read_text())
+            self.assertEqual((info["title"], info["start"], info["order"], info["world"]), ("Everon", [10, 20], 1, 1000.0))
+            self.assertEqual(info["upstream"], {"url": "https://x"})
+            self.assertFalse((old / "tiles").exists())   # its tiles come from the upstream
+
+            m, site = self.fake_bake(folder, "isle-2")
+            fieldmap.install(m, site, str(field_map), "isle", title="New Isle", log=lambda _: None)
+            new = field_map / "static/data/maps/isle"
+            info = json.loads((new / "map.json").read_text())
+            self.assertEqual((info["title"], info["slug"], info["order"], info["start"]), ("New Isle", "isle-2", 2, [250.0, 250.0]))
+            self.assertTrue((new / "tiles/0/0/0.jpg").is_file())
+            self.assertEqual(fieldmap.site_map_id(str(field_map), "isle-2"), "isle")
 
     def test_missing_scipy_fails_before_reading_shots_or_writing_profiles(self):
         original = builtins.__import__
