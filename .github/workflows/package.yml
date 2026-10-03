@@ -34,8 +34,9 @@ jobs:
         shell: pwsh
         run: |
           $app = "dist\ReforgerMapTools"
-          & "$app\rmt.exe" --help | Select-Object -First 3
+          $help = & "$app\rmt.exe" --help   # all of it: cutting the pipe short makes the exit code fail
           if ($LASTEXITCODE -ne 0) { throw "rmt.exe --help failed" }
+          $help | Select-Object -First 3
           # detect exits 1 here (no Steam on the build machine); it must still print its checks as JSON lines
           $out = & "$app\rmt.exe" --events detect
           $out | Select-Object -First 5
@@ -54,6 +55,7 @@ jobs:
           if (Test-Path $log) { Get-Content $log; throw "the window failed to start" }
           if ($p.HasExited) { throw "the window closed by itself (exit $($p.ExitCode))" }
           Stop-Process -Id $p.Id -Force
+          exit 0   # detect above left a non-zero exit code on purpose
 
       - name: Zip
         id: zip
