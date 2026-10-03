@@ -294,6 +294,32 @@ elevations the end flight is turned, not extrapolated.
   4.77 and 5.86°. Those, and the iron-sight marks, sit close to what the measured flights need, which is how the cross
   is known to be the bore.
 
+### `bullettest.py`: the guns' rounds
+
+```bash
+python bullettest.py plan               # write the plans (one per wind) into the game profile
+python bullettest.py run                # one game run per wind; about 15 minutes
+python bullettest.py score [folder]     # tables -> out/bullets.json (copy to the site's static/data/bullets.json)
+```
+
+The same flights as the rockets, for the rounds of the site's scoped weapons: 7N1 (SVD), 57N323S (PKM, UK59, and the
+PKT at its 1.036 speed), M118 (M21), M80 (M240), M855 (M16A2, and the carbine at 0.93), 7N6 (AK-74, AKS-74U at 0.835,
+RPK-74 at 1.06), B32 (NSV), BZ (KPVT), and the M242's M792 HEI-T and M791 APDS-T. Each is launched at its weapon's speed
+(the ammo's `InitSpeed` times the weapon's `BulletInitSpeedCoef`, found by `rmtlib/prefab.py` up the prefab
+inheritance), 1500 m above the sea so even 12° down flies its full 10 s, every 0.02 s recorded
+(`-rmtFireTraceDt=0.02 -rmtFireMaxT=10 -rmtFireGap=0.3`), and tabled every 0.1 s.
+
+Why not the mortar model? Bullets use the same `ShellMoveComponent` (`AirDrag` / `Mass`), but drag that goes with the
+square of speed doesn't match the engine's own tables for them (`Configs/Weapons/AIBallisticTables/AIBT_*.conf`: per
+launch speed, a level shot's distance, drop and time): the 7N1 loses speed faster early and slower late than any single
+drag factor gives, as if drag changes with speed. Mortar shells are slow enough not to show it.
+
+Scopes: the turret scopes' `SightRangeInfo` lists only ranges (its first number is the turret's position, 0 to 1, not an
+angle), so the game zeroes the centre for the range set; the site takes the angle that puts a level shot there from
+the flights. The range-line sights (BTR-70 and BRDM-2 PP-61, LAV-25) were measured off their reticle textures like the
+PGO-7: rows of each range line, the texture's scale from `m_fReticleAngularSize` over `m_fReticlePortion`; the row the
+bore points at is fitted to the flights.
+
 ### `launchertest.py`: through a soldier's real launcher (written, not yet run)
 
 ```bash

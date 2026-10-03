@@ -45,14 +45,14 @@ def speed(q):
     return math.sqrt(q[4] ** 2 + q[5] ** 2 + q[6] ** 2)
 
 
-def tables(F, elevs):
+def tables(F, elevs, dt=DT):
     out = {}
     for name in dict.fromkeys(p['rocket'] for p, _ in F):
         mine = [(p, fr) for p, fr in F if p['rocket'] == name]
         calm = [(p, fr) for p, fr in mine if p['wspeed'] == 0]
         life = min(fr[-1][0] for _, fr in calm)
-        n = int(life / DT)
-        ts = [i * DT for i in range(n + 1)]
+        n = int(life / dt)
+        ts = [i * dt for i in range(n + 1)]
         cal = {}
         for e in elevs:
             frs = [fr for p, fr in calm if p['elev'] == e]
@@ -79,7 +79,7 @@ def tables(F, elevs):
             return res
 
         cross, head, tail = wind(90), wind(0), wind(180)
-        out[name] = {'life': round(life, 2), 'dt': DT, 'elevs': list(elevs), 'calm': [cal[e] for e in elevs],
+        out[name] = {'life': round(life, 2), 'dt': dt, 'elevs': list(elevs), 'calm': [cal[e] for e in elevs],
                      'head': [r[:2] for r in head], 'tail': [r[:2] for r in tail], 'cross': cross,
                      'v0': round(st.mean(speed(fr[1]) for _, fr in calm)),
                      'spread': round(st.pstdev([at(fr, 2)[1] - st.mean(at(f2, 2)[1] for p2, f2 in calm if p2['elev'] == p['elev'])

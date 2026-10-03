@@ -1,5 +1,5 @@
 // When the real game is started by rmt.py with -rmtSat (satellite pictures), -rmtFoliage (plant photographs) or
-// -rmtFire (live mortar firing test), -rmtBlast (live mortar blast test),
+// -rmtFire (live mortar firing test), -rmtBlast (live mortar blast test), -rmtLauncher (live rocket launcher test),
 // place the capture entity as soon as the world is loaded. Without either flag this does nothing.
 modded class ArmaReforgerScripted
 {
@@ -28,6 +28,11 @@ modded class ArmaReforgerScripted
 		{
 			IEntity blast = SpawnEntity(RMT_BlastTestEntity, world, params);
 			Print(string.Format("RMT|blast|hook|test=%1", blast != null), LogLevel.NORMAL);
+		}
+		if (System.GetCLIParam("rmtLauncher", flag))
+		{
+			IEntity launcher = SpawnEntity(RMT_LauncherTestEntity, world, params);
+			Print(string.Format("RMT|launcher|hook|test=%1", launcher != null), LogLevel.NORMAL);
 		}
 		if (System.GetCLIParam("rmtFoliage", flag))
 		{

@@ -134,6 +134,8 @@ first, and `satellite` needs the terrain export.
 | `blasttest.py` | Live mortar blast test: who goes down or is hurt around a burst ([docs/firetest.md](docs/firetest.md)) |
 | `rockettest.py`, `rocketfit.py` | Live rocket flight test, and the flight and wind tables the site's rocket calculator reads ([docs/firetest.md](docs/firetest.md)) |
 | `launchertest.py` | Live launcher test: soldiers fire the real launchers to check sights, launch scatter and hits ([docs/firetest.md](docs/firetest.md)) |
+| `bullettest.py` | Live bullet flight test: the scoped rifles', machine guns' and vehicle guns' rounds, the site's sight calculator ([docs/firetest.md](docs/firetest.md)) |
+| `rmtlib/prefab.py` | Reads values out of the game's prefabs, following their inheritance |
 | `audible/` | Gunshot audibility from the game's sound files; separate scripts, run from that folder ([docs/audible.md](docs/audible.md)) |
 | `docs/` | The documentation listed above |
 
