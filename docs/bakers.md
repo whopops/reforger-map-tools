@@ -170,13 +170,14 @@ map's data is there once. Needs the `los`, `places`, `roads`, `foliage` and `pla
 | `data/maps/<id>/light/` | `site/light/` | both (the 3D view uses `height`, `canopy`, `buildings`, `forest`) |
 | `data/maps/<id>/plants/`, `foliage.json`, `foliage/foliage_profiles.json` | `site/plants/`, `site/foliage.json`, `site/foliage/` | both (Measured line of sight; the 3D view's "Measured tree shapes" draws `foliage.json`'s `bins` and `plants`) |
 | `data/maps/<id>/roads.json`, `places.json` | `site/` | both (the 3D view turns them into its own forms as it loads) |
-| `data/maps/<id>/tiles/` | `site/tiles/` | the field map: satellite tiles, every map but Everon (whose come from the server's cache; `--tiles` copies them too) |
+| `data/maps/<id>/tiles/` | `site/tiles/` | the field map: satellite tiles, for every map whose `map.json` names no `upstream` tile server (Everon has one for now; `--tiles` copies them anyway) |
 | `data/maps/<id>/trees/` | the raw `objects/` and `site/foliage/` | the 3D view's shaped trees: `trees.py`, below |
-| `3d/maps.json` | `site/los/index.json` and the probe | the maps the 3D view offers: `{default, maps: {id: {title, world, tile, cols, rows, lightCols, lightCell, unit, start, hasTrees, poi?}}}`; `poi` is the map's reference file of bases and caches, `data/<id>.json`, when it has one |
+| `data/maps/<id>/map.json` | `site/los/index.json` and the probe | what the site knows about the map: `{title, slug, order, world, tile, cols, rows, lightCols, lightCell, unit, start, hasTrees, upstream?}`. The site lists every folder that has one (its join screen, and the 3D view's `maps.json`, which the server builds from them). `title`, `start`, `order` and `upstream` are kept from the one already there |
 
-`--to` defaults to `arma-map/everon-map` beside this repo's folder; `--as` defaults to `everon`, `kolguyev` or
-`arland` from the world's slug. A new map needs a line in `MAPS` in `fieldmap.py` (its id, title and 3D camera start;
-`None` starts over the land chunk nearest the middle) and in `MAPS` in the field map's `app.js` and `server.py`.
+`--to` defaults to `arma-map/everon-map` beside this repo's folder; `--as` defaults to the site's map whose
+`map.json` has the world's slug. A new map needs only `--as <id>` (and `--title <name>`, else the world's name) on its
+first install: its `map.json` puts it on the site, with the 3D camera over the land chunk nearest the middle (edit
+`start` in `map.json` to change it), last in the list (`order`).
 Files already there with the same size are skipped; the trees are rebuilt every time.
 
 **Trees** (`trees.py`). Every standing tree and bush in the entities export becomes an 8-byte record in

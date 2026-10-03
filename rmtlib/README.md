@@ -101,8 +101,9 @@ objects and terrain, the bare terrain and bullets (`cover` plane). Returns the t
 ### `fieldmap.py` and `trees.py`: `rmt.py fieldmap`
 - `fieldmap.install(manifest, site, field_map, map_id, tiles, photos, log)`: one world's bake into the website:
   the files into `<field_map>/static/data/maps/<map_id>/` (the field map and its 3D view read the same ones), the 3D
-  view's trees into its `trees/`, and the map's entry in `<field_map>/static/3d/maps.json` (`map_entry`).
-  `MAPS` maps world slugs to the site's map id, title and 3D camera start (`MAP_IDS` is just the ids);
+  view's trees into its `trees/`, and its `map.json` (`map_entry`), which is how the site learns the map exists.
+  `site_maps(field_map)` reads the site's `map.json` files and `site_map_id(field_map, slug)` finds a world's map id
+  by the `slug` in them; title, 3D camera start, list order and `upstream` are kept from the `map.json` already there.
   `default_field_map(repo)` finds `arma-map/everon-map` beside the repo's folder. `tuned_colours` reads the
   hand-tuned tree colours from the site's Everon tree table before the trees are rebuilt, and `build_trees` puts them
   back.

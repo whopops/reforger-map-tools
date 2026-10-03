@@ -53,7 +53,7 @@ def main(argv=None):
     c.add_argument("--site", help="a site folder (holding los/) to score instead of the export's")
 
     fm = sub.add_parser("fieldmap", help="install the newest bake of a world into the website (static/data/maps/<id>/, "
-                                         "the 3D view's trees and map list)")
+                                         "its map.json and the 3D view's trees)")
     fm.add_argument("world")
     _fieldmap_options(fm)
 
@@ -88,10 +88,12 @@ def _export_options(p):
 def _fieldmap_options(p):
     p.add_argument("--to", help="the field map's folder, holding server.py (default: arma-map/everon-map beside "
                                 "this repo's folder)")
-    p.add_argument("--as", dest="map_id", help="the site's id for the world (default: everon, kolguyev or "
-                                               "arland by its slug)")
-    p.add_argument("--tiles", action="store_true", help="also copy the satellite tiles for everon (its come from "
-                                                        "the field map server's tile cache otherwise)")
+    p.add_argument("--as", dest="map_id", help="the site's id for the world (default: the site's map whose "
+                                               "map.json has the world's slug; needed for a new map)")
+    p.add_argument("--title", help="the map's name on the site (default: the one in its map.json, or the world's "
+                                   "name for a new map)")
+    p.add_argument("--tiles", action="store_true", help="also copy the satellite tiles for a map whose map.json names "
+                                                        "an upstream tile server (Everon for now)")
     p.add_argument("--photos", action="store_true", help="colour the tree kinds that have no tuned colours from the "
                                                          "foliage photos instead of plain greens")
 
@@ -236,17 +238,17 @@ def install_site(args, ap, m, site):
     target = args.to or fmap.default_field_map(paths.REPO)
     if not target or not os.path.isfile(os.path.join(target, "server.py")):
         ap.error("--to must be the field map's folder (the one holding server.py)")
-    map_id = args.map_id or fmap.MAP_IDS.get(m["slug"])
+    map_id = args.map_id or fmap.site_map_id(target, m["slug"])
     if not map_id:
-        ap.error(f"no site id for {m['slug']}: pass --as <id> (and add the map to MAPS in its app.js and server.py, "
-                 f"and to MAPS in rmtlib/fieldmap.py for its 3D title and start)")
+        ap.error(f"the site has no map for {m['slug']} yet: pass --as <id> (lower case, e.g. --as {m['world'].lower()}) "
+                 f"to add it, and --title for its name")
     for need in ("los/index.json", "foliage/foliage_profiles.json", "foliage.json", "roads.json", "places.json"):
         if not os.path.isfile(os.path.join(site, need)):
             raise SystemExit(f"{need} isn't in {site} (run rmt.py bake {m['slug']})")
     photos = None
     if args.photos:
         photos = os.path.join(Install(args.workbench).game_profile, "rmt", m["slug"], m["gameBuild"], "foliage")
-    fmap.install(m, site, target, map_id, tiles=args.tiles, photos=photos)
+    fmap.install(m, site, target, map_id, tiles=args.tiles, photos=photos, title=args.title)
 
 
 def bake(args):
