@@ -1,15 +1,24 @@
 # Builds the desktop app as a zip with no Python needed (docs/packaging.md).
-# Push a tag like v0.1.0 and the zip is published as a GitHub Release; "Run workflow" or a pull request that touches
-# the app builds it and keeps the zip as a download on the run's page.
+# Push a tag like v0.1.0, or press "Run workflow" and type a version, and the zip is published as a GitHub Release.
+# "Run workflow" with no version, or a pull request that touches the app, builds it and keeps the zip as a download
+# on the run's page.
 name: Package desktop app
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to publish, e.g. v0.1.0 (empty: just build)"
+        required: false
+        default: ""
   pull_request:
     paths: ["rmt.py", "rmt_gui.py", "rmtgui/**", "rmtlib/**", "addon/**", "requirements.txt",
             "ReforgerMapTools.spec", ".github/workflows/package.yml"]
+
+env:
+  VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
 
 permissions:
   contents: write
@@ -61,7 +70,7 @@ jobs:
         id: zip
         shell: pwsh
         run: |
-          $ver = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "dev-$("${{ github.sha }}".Substring(0, 7))" }
+          $ver = if ($env:VERSION) { $env:VERSION } else { "dev-$("${{ github.sha }}".Substring(0, 7))" }
           $zip = "ReforgerMapTools-$ver-win64.zip"
           Compress-Archive -Path dist\ReforgerMapTools -DestinationPath $zip
           "{0:N0} MB" -f ((Get-Item $zip).Length / 1MB)
@@ -73,9 +82,11 @@ jobs:
           path: dist/ReforgerMapTools
 
       - name: Publish the release
-        if: github.ref_type == 'tag'
+        if: env.VERSION != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           files: ${{ steps.zip.outputs.zip }}
           body: |
             Reforger Map Tools for Windows. No Python needed.

@@ -50,7 +50,8 @@ the zip.
 
 ## Making a release
 
-Push a tag, e.g. `git tag v0.2.0 && git push origin v0.2.0`. The workflow builds, checks the build (`rmt.exe --help`,
+On GitHub: *Actions* → *Package desktop app* → *Run workflow*, type a version such as `v0.2.0`, and run it. Or push
+a tag: `git tag v0.2.0 && git push origin v0.2.0`. The workflow builds, checks the build (`rmt.exe --help`,
 `rmt.exe --events detect`, the self-tests, and that the window opens), zips it and publishes the release.
-*Run workflow* on the Actions page, or a pull request touching the app, builds and checks it without publishing; the
+*Run workflow* with no version, or a pull request touching the app, builds and checks it without publishing; the
 build is then a download on that run's page.
