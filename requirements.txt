@@ -1,0 +1,5 @@
+# Export needs only the standard library. Baking needs numpy, Pillow, and SciPy; the desktop app needs PySide6.
+numpy
+Pillow
+scipy
+PySide6

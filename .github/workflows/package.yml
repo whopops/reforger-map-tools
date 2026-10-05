@@ -1,0 +1,99 @@
+# Builds the desktop app as a zip with no Python needed (docs/packaging.md).
+# Push a tag like v0.1.0, or press "Run workflow" and type a version, and the zip is published as a GitHub Release.
+# "Run workflow" with no version, or a pull request that touches the app, builds it and keeps the zip as a download
+# on the run's page.
+name: Package desktop app
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to publish, e.g. v0.1.0 (empty: just build)"
+        required: false
+        default: ""
+  pull_request:
+    paths: ["rmt.py", "rmt_gui.py", "rmtgui/**", "rmtlib/**", "addon/**", "requirements.txt",
+            "ReforgerMapTools.spec", ".github/workflows/package.yml"]
+
+env:
+  VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install --disable-pip-version-check -r requirements.txt pyinstaller
+
+      - name: Build
+        run: pyinstaller --noconfirm ReforgerMapTools.spec
+
+      - name: Check the build
+        shell: pwsh
+        run: |
+          $app = "dist\ReforgerMapTools"
+          $help = & "$app\rmt.exe" --help   # all of it: cutting the pipe short makes the exit code fail
+          if ($LASTEXITCODE -ne 0) { throw "rmt.exe --help failed" }
+          $help | Select-Object -First 3
+          # detect exits 1 here (no Steam on the build machine); it must still print its checks as JSON lines
+          $out = & "$app\rmt.exe" --events detect
+          $out | Select-Object -First 5
+          if (-not ($out | Where-Object { $_ -like '{*' })) { throw "rmt.exe --events detect printed no events" }
+          # the self-tests, run the way the Labs page runs them
+          Push-Location "$app\_internal"
+          $tests = & "..\rmt.exe" --stderr-info --module unittest discover -p "test_*.py"
+          Pop-Location
+          $tests | Select-Object -Last 5
+          if (-not ($tests | Where-Object { $_ -like '*"done"*"ok": true*' })) { throw "self-tests failed" }
+          # the window opens and stays open (an error at start writes gui-error.log)
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process "$app\Reforger Map Tools.exe" -PassThru
+          Start-Sleep -Seconds 15
+          $log = "$env:LOCALAPPDATA\ReforgerMapTools\gui-error.log"
+          if (Test-Path $log) { Get-Content $log; throw "the window failed to start" }
+          if ($p.HasExited) { throw "the window closed by itself (exit $($p.ExitCode))" }
+          Stop-Process -Id $p.Id -Force
+          exit 0   # detect above left a non-zero exit code on purpose
+
+      - name: Zip
+        id: zip
+        shell: pwsh
+        run: |
+          $ver = if ($env:VERSION) { $env:VERSION } else { "dev-$("${{ github.sha }}".Substring(0, 7))" }
+          $zip = "ReforgerMapTools-$ver-win64.zip"
+          Compress-Archive -Path dist\ReforgerMapTools -DestinationPath $zip
+          "{0:N0} MB" -f ((Get-Item $zip).Length / 1MB)
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReforgerMapTools-win64
+          path: dist/ReforgerMapTools
+
+      - name: Publish the release
+        if: env.VERSION != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          files: ${{ steps.zip.outputs.zip }}
+          body: |
+            Reforger Map Tools for Windows. No Python needed.
+
+            1. Download the zip below and unzip it anywhere.
+            2. Double-click **Reforger Map Tools.exe** in the unzipped folder.
+            3. Windows may say "Windows protected your PC" the first time, because the app isn't signed: click
+               *More info*, then *Run anyway*.
+
+            Steam must be running, with Arma Reforger and Arma Reforger Tools installed. See docs/gui.md.

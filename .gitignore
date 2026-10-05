@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.build/
+out/
+resourceDatabase.rdb
+.venv/
+audible/pakindex.json

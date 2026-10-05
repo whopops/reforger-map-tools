@@ -1,0 +1,4373 @@
+{
+  "schema": "rmt-website-calibration-v1",
+  "reviewed": "2026-10-05",
+  "source": "arma-map application snapshot; values are curated or previously measured, not fresh engine results",
+  "sightDefinitions": {
+    "SVD": {
+      "name": "SVD · PSO-1",
+      "round": "7N1 (SVD)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000
+      ],
+      "reticle": "pso1",
+      "mils": 0.06
+    },
+    "M21": {
+      "name": "M21 · ART II",
+      "round": "M118 (M21)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900
+      ],
+      "reticle": "art2"
+    },
+    "M16A2": {
+      "name": "M16A2 · 4x20",
+      "round": "M855 (M16A2)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "cross"
+    },
+    "M16A2 carbine": {
+      "name": "M16A2 carbine · 4x20",
+      "round": "M855 (M16A2 carbine)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "cross"
+    },
+    "AK-74N": {
+      "name": "AK-74N · 1P29",
+      "round": "7N6 (AK-74)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "post"
+    },
+    "AKS-74UN": {
+      "name": "AKS-74UN · 1P29",
+      "round": "7N6 (AKS-74U)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "post"
+    },
+    "RPK-74N": {
+      "name": "RPK-74N · 1P29",
+      "round": "7N6 (RPK-74)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "post"
+    },
+    "PKMN": {
+      "name": "PKMN · 1P29",
+      "round": "57N323S (PKM, UK59)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500
+      ],
+      "reticle": "post"
+    },
+    "UK59": {
+      "name": "UK59 · 4x8",
+      "round": "57N323S (PKM, UK59)",
+      "group": "Rifles and machine guns",
+      "target": "man",
+      "zeros": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000
+      ],
+      "reticle": "uk59"
+    },
+    "NSV": {
+      "name": "NSV · SPP",
+      "round": "B32 (NSV)",
+      "group": "Heavy and vehicle guns",
+      "target": "lav",
+      "zeros": [
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500,
+        1600,
+        1700,
+        1800,
+        1900,
+        2000
+      ],
+      "reticle": "spp",
+      "mils": 0.06
+    },
+    "BTR-70 KPVT": {
+      "name": "BTR-70 · KPVT",
+      "round": "BZ (KPVT)",
+      "group": "Heavy and vehicle guns",
+      "target": "lav",
+      "pxdeg": 152.8,
+      "axis": 525.5,
+      "centre": 512,
+      "reticle": "pp61",
+      "mils": 0.06,
+      "side": "left",
+      "lines": [
+        [
+          400,
+          531.5,
+          1
+        ],
+        [
+          600,
+          544.5
+        ],
+        [
+          800,
+          560,
+          1
+        ],
+        [
+          1000,
+          581
+        ],
+        [
+          1200,
+          600.5,
+          1
+        ],
+        [
+          1400,
+          623
+        ],
+        [
+          1600,
+          651.5,
+          1
+        ],
+        [
+          1800,
+          687
+        ],
+        [
+          2000,
+          727.5,
+          1
+        ]
+      ]
+    },
+    "BTR-70 PKT": {
+      "name": "BTR-70 · PKT",
+      "round": "57N323S (PKT)",
+      "group": "Heavy and vehicle guns",
+      "target": "lav",
+      "pxdeg": 152.8,
+      "axis": 524,
+      "centre": 512,
+      "reticle": "pp61",
+      "mils": 0.06,
+      "side": "right",
+      "lines": [
+        [
+          200,
+          539
+        ],
+        [
+          400,
+          556.5,
+          1
+        ],
+        [
+          600,
+          578
+        ],
+        [
+          800,
+          612,
+          1
+        ],
+        [
+          1000,
+          654
+        ],
+        [
+          1200,
+          718,
+          1
+        ],
+        [
+          1400,
+          791.5
+        ],
+        [
+          1500,
+          837,
+          1
+        ]
+      ]
+    },
+    "LAV-25 M242 HE": {
+      "name": "LAV-25 · M242 HEI-T",
+      "round": "M792 HEI-T (M242)",
+      "group": "Heavy and vehicle guns",
+      "target": "btr",
+      "pxdeg": 376.4,
+      "axis": 378,
+      "centre": 511.5,
+      "reticle": "lav",
+      "side": "left",
+      "lines": [
+        [
+          600,
+          511.5,
+          1
+        ],
+        [
+          1000,
+          567.5,
+          1
+        ],
+        [
+          1200,
+          608.5,
+          1
+        ],
+        [
+          1400,
+          652.5,
+          1
+        ],
+        [
+          1600,
+          705.5,
+          1
+        ],
+        [
+          1800,
+          773.5,
+          1
+        ],
+        [
+          2000,
+          859.5,
+          1
+        ],
+        [
+          2200,
+          941.5,
+          1
+        ]
+      ]
+    },
+    "LAV-25 M242 AP": {
+      "name": "LAV-25 · M242 APDS-T",
+      "round": "M791 APDS-T (M242)",
+      "group": "Heavy and vehicle guns",
+      "target": "btr",
+      "pxdeg": 376.4,
+      "axis": 428.5,
+      "centre": 511.5,
+      "reticle": "lav",
+      "side": "right",
+      "lines": [
+        [
+          1000,
+          511.5,
+          1
+        ],
+        [
+          1900,
+          567.5,
+          1
+        ],
+        [
+          2400,
+          608.5,
+          1
+        ],
+        [
+          2900,
+          652.5,
+          1
+        ],
+        [
+          3400,
+          705.5,
+          1
+        ]
+      ]
+    },
+    "BRDM-2 KPVT": {
+      "name": "BRDM-2 · KPVT",
+      "round": "BZ (KPVT)",
+      "group": "Heavy and vehicle guns",
+      "target": "lav",
+      "pxdeg": 152.8,
+      "axis": 525.5,
+      "centre": 512,
+      "reticle": "pp61",
+      "mils": 0.06,
+      "side": "left",
+      "lines": [
+        [
+          400,
+          531.5,
+          1
+        ],
+        [
+          600,
+          544.5
+        ],
+        [
+          800,
+          560,
+          1
+        ],
+        [
+          1000,
+          581
+        ],
+        [
+          1200,
+          600.5,
+          1
+        ],
+        [
+          1400,
+          623
+        ],
+        [
+          1600,
+          651.5,
+          1
+        ],
+        [
+          1800,
+          687
+        ],
+        [
+          2000,
+          727.5,
+          1
+        ]
+      ]
+    },
+    "BRDM-2 PKT": {
+      "name": "BRDM-2 · PKT",
+      "round": "57N323S (PKT)",
+      "group": "Heavy and vehicle guns",
+      "target": "lav",
+      "pxdeg": 152.8,
+      "axis": 524,
+      "centre": 512,
+      "reticle": "pp61",
+      "mils": 0.06,
+      "side": "right",
+      "lines": [
+        [
+          200,
+          539
+        ],
+        [
+          400,
+          556.5,
+          1
+        ],
+        [
+          600,
+          578
+        ],
+        [
+          800,
+          612,
+          1
+        ],
+        [
+          1000,
+          654
+        ],
+        [
+          1200,
+          718,
+          1
+        ],
+        [
+          1400,
+          791.5
+        ],
+        [
+          1500,
+          837,
+          1
+        ]
+      ]
+    }
+  },
+  "rocketChoices": [
+    [
+      "RPG-7",
+      "PG-7VM"
+    ],
+    [
+      "RPG-7",
+      "PG-7VL"
+    ],
+    [
+      "RPG-7",
+      "PG-7VR"
+    ],
+    [
+      "M72A3",
+      "M72A3"
+    ],
+    [
+      "RPG-22",
+      "PG-22"
+    ],
+    [
+      "RPG-75",
+      "RPG-75"
+    ]
+  ],
+  "gunTargets": {
+    "man": {
+      "name": "standing soldier",
+      "h": 1.8,
+      "parts": [
+        [
+          "rect",
+          -0.22,
+          0,
+          0.44,
+          1.5
+        ],
+        [
+          "circle",
+          0,
+          1.62,
+          0.13
+        ]
+      ]
+    },
+    "lav": {
+      "name": "LAV-25",
+      "h": 2.75,
+      "parts": [
+        [
+          "rect",
+          -3.2,
+          0.5,
+          6.4,
+          1.55
+        ],
+        [
+          "rect",
+          -2.4,
+          2.05,
+          4.6,
+          0.2
+        ],
+        [
+          "rect",
+          -0.5,
+          2.1,
+          1.8,
+          0.65
+        ],
+        [
+          "rect",
+          1.3,
+          2.42,
+          2.2,
+          0.09
+        ],
+        [
+          "circle",
+          -2.5,
+          0.52,
+          0.52
+        ],
+        [
+          "circle",
+          -1.2,
+          0.52,
+          0.52
+        ],
+        [
+          "circle",
+          0.9,
+          0.52,
+          0.52
+        ],
+        [
+          "circle",
+          2.2,
+          0.52,
+          0.52
+        ]
+      ]
+    },
+    "btr": {
+      "name": "BTR-70",
+      "h": 2.3,
+      "parts": [
+        [
+          "rect",
+          -3.7,
+          0.55,
+          7.4,
+          1.2
+        ],
+        [
+          "rect",
+          -3,
+          1.75,
+          6,
+          0.3
+        ],
+        [
+          "rect",
+          -0.3,
+          2,
+          1,
+          0.45
+        ],
+        [
+          "rect",
+          0.7,
+          2.18,
+          1.6,
+          0.08
+        ],
+        [
+          "circle",
+          -2.8,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          -1.4,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          1.4,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          2.8,
+          0.5,
+          0.5
+        ]
+      ]
+    }
+  },
+  "sightTargets": {
+    "1": {
+      "name": "vehicle",
+      "h": 2.9,
+      "parts": [
+        [
+          "rect",
+          -3.6,
+          0.45,
+          7.2,
+          1.75
+        ],
+        [
+          "rect",
+          -1.1,
+          2.2,
+          2.4,
+          0.7
+        ],
+        [
+          "rect",
+          1.1,
+          2.45,
+          2.3,
+          0.12
+        ],
+        [
+          "circle",
+          -2.6,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          -0.9,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          0.9,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          2.6,
+          0.5,
+          0.5
+        ]
+      ]
+    },
+    "0.5": {
+      "name": "prone soldier",
+      "h": 0.45,
+      "parts": [
+        [
+          "rect",
+          -0.9,
+          0,
+          1.6,
+          0.35
+        ],
+        [
+          "circle",
+          0.85,
+          0.2,
+          0.13
+        ]
+      ]
+    },
+    "1.6": {
+      "name": "standing soldier",
+      "h": 1.8,
+      "parts": [
+        [
+          "rect",
+          -0.22,
+          0,
+          0.44,
+          1.5
+        ],
+        [
+          "circle",
+          0,
+          1.62,
+          0.13
+        ]
+      ]
+    },
+    "2.2": {
+      "name": "vehicle",
+      "h": 2.9,
+      "parts": [
+        [
+          "rect",
+          -3.6,
+          0.45,
+          7.2,
+          1.75
+        ],
+        [
+          "rect",
+          -1.1,
+          2.2,
+          2.4,
+          0.7
+        ],
+        [
+          "rect",
+          1.1,
+          2.45,
+          2.3,
+          0.12
+        ],
+        [
+          "circle",
+          -2.6,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          -0.9,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          0.9,
+          0.5,
+          0.5
+        ],
+        [
+          "circle",
+          2.6,
+          0.5,
+          0.5
+        ]
+      ]
+    }
+  },
+  "constructionRoles": {
+    "headquarters": {
+      "name": "Headquarters",
+      "kind": "point",
+      "glyph": "HQ",
+      "group": "Services",
+      "type": "construct"
+    },
+    "player-hub": {
+      "name": "Deployment point",
+      "kind": "point",
+      "glyph": "DP",
+      "group": "Services",
+      "type": "construct"
+    },
+    "antenna": {
+      "name": "Radio relay",
+      "kind": "point",
+      "glyph": "RAD",
+      "group": "Services",
+      "type": "construct"
+    },
+    "armory": {
+      "name": "Armory",
+      "kind": "point",
+      "glyph": "ARM",
+      "group": "Services",
+      "type": "construct"
+    },
+    "supply": {
+      "name": "Supply storage",
+      "kind": "point",
+      "glyph": "SUP",
+      "group": "Services",
+      "type": "construct"
+    },
+    "living": {
+      "name": "Living quarters",
+      "kind": "point",
+      "glyph": "LQ",
+      "group": "Services",
+      "type": "construct"
+    },
+    "hospital": {
+      "name": "Field hospital",
+      "kind": "point",
+      "glyph": "MED",
+      "group": "Services",
+      "type": "construct"
+    },
+    "light-depot": {
+      "name": "Light vehicle depot",
+      "kind": "point",
+      "glyph": "LVD",
+      "group": "Services",
+      "type": "construct"
+    },
+    "heavy-depot": {
+      "name": "Heavy vehicle depot",
+      "kind": "point",
+      "glyph": "HVD",
+      "group": "Services",
+      "type": "construct"
+    },
+    "helipad": {
+      "name": "Helipad",
+      "kind": "point",
+      "glyph": "H",
+      "group": "Services",
+      "type": "construct"
+    },
+    "fuel": {
+      "name": "Fuel storage",
+      "kind": "point",
+      "glyph": "FUEL",
+      "group": "Services",
+      "type": "construct"
+    },
+    "floodlight": {
+      "name": "Floodlight generator",
+      "kind": "point",
+      "glyph": "FL",
+      "group": "Services",
+      "type": "construct"
+    },
+    "bunker": {
+      "name": "Bunker",
+      "kind": "point",
+      "glyph": "BK",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "sandbag-position": {
+      "name": "Sandbag fighting position",
+      "kind": "point",
+      "glyph": "SP",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "camo-net": {
+      "name": "Camouflage net",
+      "kind": "point",
+      "glyph": "NET",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "guard-tower": {
+      "name": "Guard tower",
+      "kind": "point",
+      "glyph": "GT",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "barricade": {
+      "name": "Roadblock",
+      "kind": "point",
+      "glyph": "RB",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "checkpoint": {
+      "name": "Checkpoint",
+      "kind": "point",
+      "glyph": "CP",
+      "group": "Fortifications",
+      "type": "construct"
+    },
+    "wall": {
+      "name": "Sandbags",
+      "kind": "line",
+      "glyph": null,
+      "group": "Obstacles",
+      "type": "construct"
+    },
+    "wire": {
+      "name": "Barbed wire",
+      "kind": "line",
+      "glyph": null,
+      "group": "Obstacles",
+      "type": "construct"
+    },
+    "roadblock": {
+      "name": "Tank traps",
+      "kind": "line",
+      "glyph": null,
+      "group": "Obstacles",
+      "type": "construct"
+    },
+    "dragon-teeth": {
+      "name": "Dragon’s teeth",
+      "kind": "line",
+      "glyph": null,
+      "group": "Obstacles",
+      "type": "construct"
+    },
+    "lmg": {
+      "name": "LMG emplacement",
+      "kind": "aim",
+      "glyph": "LMG",
+      "group": "Weapons",
+      "type": "emplacement"
+    },
+    "hmg": {
+      "name": "HMG emplacement",
+      "kind": "aim",
+      "glyph": "HMG",
+      "group": "Weapons",
+      "type": "emplacement"
+    },
+    "aa-mg": {
+      "name": "AA HMG emplacement",
+      "kind": "aim",
+      "glyph": "AA",
+      "group": "Weapons",
+      "type": "emplacement"
+    },
+    "mortar-pit": {
+      "name": "Mortar placement",
+      "kind": "point",
+      "glyph": "MOR",
+      "group": "Weapons",
+      "type": "construct"
+    }
+  },
+  "caves": {
+    "everon": [
+      {
+        "name": "Ore Ridge cave",
+        "kind": "Cave",
+        "grid": "106,024",
+        "note": "Large cave with lots of flat space for a camp.",
+        "xz": [
+          10650,
+          2450
+        ]
+      },
+      {
+        "name": "Courbet coastal cave",
+        "kind": "Cave",
+        "grid": "084,007",
+        "note": "Small ruins with a coastal cave; room for a few tents.",
+        "xz": [
+          8450,
+          750
+        ]
+      },
+      {
+        "name": "Regina bunker",
+        "kind": "Bunker",
+        "grid": "071,016",
+        "note": "Underground shelter; room for one tent.",
+        "xz": [
+          7150,
+          1650
+        ]
+      },
+      {
+        "name": "Regina coastal lighthouse",
+        "kind": "Hideout",
+        "grid": "075,013",
+        "note": "Lighthouse area with the most room in these woods.",
+        "xz": [
+          7550,
+          1350
+        ]
+      },
+      {
+        "name": "Skaka Point quarry",
+        "kind": "Hideout",
+        "grid": "095,048",
+        "note": "Flat quarry floor plus space by the ruins above.",
+        "xz": [
+          9550,
+          4850
+        ]
+      },
+      {
+        "name": "Skaka Point south forest",
+        "kind": "Hideout",
+        "grid": "096,048",
+        "note": "Wooded area with room for a small camp.",
+        "xz": [
+          9650,
+          4850
+        ]
+      },
+      {
+        "name": "Long Hill camp",
+        "kind": "Hideout",
+        "grid": "023,056",
+        "note": "Small encampment on flat ground.",
+        "xz": [
+          2350,
+          5650
+        ]
+      },
+      {
+        "name": "Old Woods hilltop",
+        "kind": "Hideout",
+        "grid": "038,042",
+        "note": "Small camp with a good hilltop observation spot.",
+        "xz": [
+          3850,
+          4250
+        ]
+      },
+      {
+        "name": "Highstone woods",
+        "kind": "Hideout",
+        "grid": "049,085",
+        "note": "Room for a very large camp across the woods.",
+        "xz": [
+          4950,
+          8550
+        ]
+      },
+      {
+        "name": "Coalman's Brow lake",
+        "kind": "Hideout",
+        "grid": "042,103",
+        "note": "Medium camp spot by the water.",
+        "xz": [
+          4250,
+          10350
+        ]
+      },
+      {
+        "name": "Coalman's Brow coastal forest",
+        "kind": "Hideout",
+        "grid": "040,099",
+        "note": "Forest with even more flat ground.",
+        "xz": [
+          4050,
+          9950
+        ]
+      }
+    ],
+    "arland": [],
+    "kolguyev": []
+  },
+  "treeColours": {
+    "everon": {
+      "b_corylus_avellana_1": {
+        "trunk": [
+          51,
+          72,
+          40
+        ],
+        "crown": [
+          69,
+          122,
+          41
+        ]
+      },
+      "b_corylus_avellana_1l": {
+        "trunk": [
+          50,
+          70,
+          38
+        ],
+        "crown": [
+          67,
+          120,
+          39
+        ]
+      },
+      "b_corylus_avellana_2": {
+        "trunk": [
+          47,
+          69,
+          36
+        ],
+        "crown": [
+          64,
+          117,
+          36
+        ]
+      },
+      "b_juniperus_communis_0": {
+        "trunk": [
+          48,
+          60,
+          40
+        ],
+        "crown": [
+          69,
+          99,
+          49
+        ]
+      },
+      "b_juniperus_communis_1s": {
+        "trunk": [
+          49,
+          64,
+          41
+        ],
+        "crown": [
+          70,
+          107,
+          50
+        ]
+      },
+      "b_juniperus_communis_2s": {
+        "trunk": [
+          38,
+          53,
+          33
+        ],
+        "crown": [
+          53,
+          89,
+          38
+        ]
+      },
+      "b_juniperus_communis_2w": {
+        "trunk": [
+          45,
+          57,
+          37
+        ],
+        "crown": [
+          65,
+          95,
+          45
+        ]
+      },
+      "b_phragmites_australis_1": {
+        "trunk": [
+          57,
+          77,
+          48
+        ],
+        "crown": [
+          79,
+          130,
+          56
+        ]
+      },
+      "b_phragmites_australis_1b": {
+        "trunk": [
+          60,
+          81,
+          56
+        ],
+        "crown": [
+          85,
+          135,
+          72
+        ]
+      },
+      "b_rosa_canina_0s": {
+        "trunk": [
+          76,
+          88,
+          60
+        ],
+        "crown": [
+          116,
+          143,
+          73
+        ]
+      },
+      "b_rosa_canina_1s": {
+        "trunk": [
+          76,
+          88,
+          56
+        ],
+        "crown": [
+          115,
+          146,
+          62
+        ]
+      },
+      "b_rubus_idaeus_0s": {
+        "trunk": [
+          53,
+          70,
+          41
+        ],
+        "crown": [
+          77,
+          117,
+          47
+        ]
+      },
+      "b_rubus_idaeus_1s": {
+        "trunk": [
+          53,
+          69,
+          42
+        ],
+        "crown": [
+          75,
+          115,
+          47
+        ]
+      },
+      "b_salix_cinerea_0": {
+        "trunk": [
+          49,
+          67,
+          43
+        ],
+        "crown": [
+          68,
+          113,
+          53
+        ]
+      },
+      "b_salix_cinerea_1": {
+        "trunk": [
+          45,
+          64,
+          38
+        ],
+        "crown": [
+          62,
+          107,
+          44
+        ]
+      },
+      "b_salix_cinerea_1w": {
+        "trunk": [
+          45,
+          62,
+          37
+        ],
+        "crown": [
+          61,
+          106,
+          43
+        ]
+      },
+      "b_sambucus_nigra_1": {
+        "trunk": [
+          52,
+          68,
+          42
+        ],
+        "crown": [
+          73,
+          114,
+          48
+        ]
+      },
+      "b_sambucus_nigra_2": {
+        "trunk": [
+          53,
+          70,
+          45
+        ],
+        "crown": [
+          76,
+          116,
+          56
+        ]
+      },
+      "t_alnus_glutinosa_2f": {
+        "trunk": [
+          82,
+          96,
+          90
+        ],
+        "crown": [
+          93,
+          143,
+          68
+        ]
+      },
+      "t_alnus_glutinosa_2s": {
+        "trunk": [
+          82,
+          96,
+          86
+        ],
+        "crown": [
+          83,
+          133,
+          55
+        ]
+      },
+      "t_alnus_glutinosa_3s": {
+        "trunk": [
+          79,
+          93,
+          85
+        ],
+        "crown": [
+          71,
+          121,
+          43
+        ]
+      },
+      "t_betula_pendula_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          55,
+          128,
+          53
+        ]
+      },
+      "t_betula_pendula_1f": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          51,
+          112,
+          34
+        ]
+      },
+      "t_betula_pendula_1s": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          58,
+          121,
+          40
+        ]
+      },
+      "t_betula_pendula_1sw": {
+        "trunk": [
+          99,
+          103,
+          106
+        ],
+        "crown": [
+          58,
+          123,
+          40
+        ]
+      },
+      "t_betula_pendula_2f": {
+        "trunk": [
+          90,
+          95,
+          97
+        ],
+        "crown": [
+          56,
+          112,
+          38
+        ]
+      },
+      "t_betula_pendula_2s": {
+        "trunk": [
+          81,
+          85,
+          87
+        ],
+        "crown": [
+          49,
+          104,
+          33
+        ]
+      },
+      "t_betula_pendula_2sd": {
+        "trunk": [
+          87,
+          91,
+          91
+        ],
+        "crown": [
+          159,
+          164,
+          177
+        ]
+      },
+      "t_betula_pendula_2sw": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          57,
+          115,
+          44
+        ]
+      },
+      "t_betula_pendula_2t": {
+        "trunk": [
+          87,
+          93,
+          94
+        ],
+        "crown": [
+          56,
+          111,
+          41
+        ]
+      },
+      "t_betula_pendula_3f": {
+        "trunk": [
+          89,
+          92,
+          100
+        ],
+        "crown": [
+          54,
+          109,
+          41
+        ]
+      },
+      "t_betula_pendula_3s": {
+        "trunk": [
+          89,
+          91,
+          98
+        ],
+        "crown": [
+          56,
+          109,
+          38
+        ]
+      },
+      "t_betula_pendula_3sw": {
+        "trunk": [
+          96,
+          102,
+          106
+        ],
+        "crown": [
+          63,
+          121,
+          48
+        ]
+      },
+      "t_betula_pendula_stem_01": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          116,
+          111,
+          106
+        ]
+      },
+      "t_carpinus_betulus_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          147,
+          175,
+          137
+        ]
+      },
+      "t_carpinus_betulus_0s": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          137,
+          167,
+          122
+        ]
+      },
+      "t_carpinus_betulus_1f": {
+        "trunk": [
+          82,
+          95,
+          87
+        ],
+        "crown": [
+          86,
+          131,
+          66
+        ]
+      },
+      "t_carpinus_betulus_2f": {
+        "trunk": [
+          81,
+          93,
+          82
+        ],
+        "crown": [
+          81,
+          126,
+          61
+        ]
+      },
+      "t_carpinus_betulus_2s": {
+        "trunk": [
+          80,
+          92,
+          81
+        ],
+        "crown": [
+          65,
+          113,
+          43
+        ]
+      },
+      "t_carpinus_betulus_3d": {
+        "trunk": [
+          78,
+          87,
+          83
+        ],
+        "crown": [
+          88,
+          113,
+          103
+        ]
+      },
+      "t_carpinus_betulus_3f": {
+        "trunk": [
+          82,
+          94,
+          84
+        ],
+        "crown": [
+          59,
+          107,
+          41
+        ]
+      },
+      "t_carpinus_betulus_3s": {
+        "trunk": [
+          78,
+          90,
+          79
+        ],
+        "crown": [
+          60,
+          113,
+          40
+        ]
+      },
+      "t_malus_domestica_2s": {
+        "trunk": [
+          77,
+          86,
+          82
+        ],
+        "crown": [
+          78,
+          126,
+          48
+        ]
+      },
+      "t_picea_abies_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          62,
+          100,
+          67
+        ]
+      },
+      "t_picea_abies_1f": {
+        "trunk": [
+          77,
+          84,
+          81
+        ],
+        "crown": [
+          43,
+          73,
+          43
+        ]
+      },
+      "t_picea_abies_1s": {
+        "trunk": [
+          65,
+          69,
+          71
+        ],
+        "crown": [
+          42,
+          80,
+          44
+        ]
+      },
+      "t_picea_abies_2d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          86,
+          94,
+          81
+        ]
+      },
+      "t_picea_abies_2s": {
+        "trunk": [
+          66,
+          77,
+          62
+        ],
+        "crown": [
+          45,
+          71,
+          45
+        ]
+      },
+      "t_picea_abies_3d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          90,
+          98,
+          90
+        ]
+      },
+      "t_picea_abies_3d_high": {
+        "trunk": [
+          73,
+          74,
+          80
+        ],
+        "crown": [
+          95,
+          102,
+          92
+        ]
+      },
+      "t_picea_abies_3f": {
+        "trunk": [
+          82,
+          92,
+          80
+        ],
+        "crown": [
+          59,
+          84,
+          57
+        ]
+      },
+      "t_picea_abies_3f_high": {
+        "trunk": [
+          84,
+          92,
+          84
+        ],
+        "crown": [
+          60,
+          85,
+          58
+        ]
+      },
+      "t_picea_abies_3s": {
+        "trunk": [
+          51,
+          66,
+          54
+        ],
+        "crown": [
+          52,
+          80,
+          52
+        ]
+      },
+      "t_pinus_sylvestris_1f": {
+        "trunk": [
+          79,
+          79,
+          86
+        ],
+        "crown": [
+          64,
+          84,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_1s": {
+        "trunk": [
+          88,
+          88,
+          94
+        ],
+        "crown": [
+          60,
+          82,
+          47
+        ]
+      },
+      "t_pinus_sylvestris_2f": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          60,
+          83,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_2s": {
+        "trunk": [
+          77,
+          76,
+          82
+        ],
+        "crown": [
+          57,
+          80,
+          50
+        ]
+      },
+      "t_pinus_sylvestris_3f": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          66,
+          86,
+          53
+        ]
+      },
+      "t_pinus_sylvestris_3f_high": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          65,
+          87,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_3s": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          61,
+          86,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_3w": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          68,
+          93,
+          58
+        ]
+      },
+      "t_pinus_sylvestris_3x": {
+        "trunk": [
+          78,
+          76,
+          85
+        ],
+        "crown": [
+          71,
+          94,
+          61
+        ]
+      },
+      "t_populus_nigra_3s": {
+        "trunk": [
+          69,
+          80,
+          81
+        ],
+        "crown": [
+          46,
+          97,
+          31
+        ]
+      },
+      "t_prunus_domestica_2s": {
+        "trunk": [
+          74,
+          82,
+          66
+        ],
+        "crown": [
+          66,
+          109,
+          43
+        ]
+      },
+      "t_salix_fragilis_2s": {
+        "trunk": [
+          81,
+          87,
+          90
+        ],
+        "crown": [
+          74,
+          111,
+          58
+        ]
+      },
+      "t_salix_fragilis_3s": {
+        "trunk": [
+          80,
+          87,
+          88
+        ],
+        "crown": [
+          87,
+          118,
+          77
+        ]
+      },
+      "t_sorbus_aucuparia_1w": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          103,
+          153,
+          70
+        ]
+      },
+      "t_sorbus_aucuparia_2f": {
+        "trunk": [
+          87,
+          101,
+          99
+        ],
+        "crown": [
+          87,
+          135,
+          52
+        ]
+      },
+      "t_sorbus_aucuparia_2w": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          97,
+          148,
+          67
+        ]
+      },
+      "t_tilia_cordata_3s": {
+        "trunk": [
+          63,
+          79,
+          71
+        ],
+        "crown": [
+          50,
+          98,
+          33
+        ]
+      }
+    },
+    "arland": {
+      "b_corylus_avellana_1": {
+        "trunk": [
+          51,
+          72,
+          40
+        ],
+        "crown": [
+          69,
+          122,
+          41
+        ]
+      },
+      "b_corylus_avellana_1l": {
+        "trunk": [
+          50,
+          70,
+          38
+        ],
+        "crown": [
+          67,
+          120,
+          39
+        ]
+      },
+      "b_corylus_avellana_2": {
+        "trunk": [
+          47,
+          69,
+          36
+        ],
+        "crown": [
+          64,
+          117,
+          36
+        ]
+      },
+      "b_juniperus_communis_0": {
+        "trunk": [
+          48,
+          60,
+          40
+        ],
+        "crown": [
+          69,
+          99,
+          49
+        ]
+      },
+      "b_juniperus_communis_1s": {
+        "trunk": [
+          49,
+          64,
+          41
+        ],
+        "crown": [
+          70,
+          107,
+          50
+        ]
+      },
+      "b_juniperus_communis_2s": {
+        "trunk": [
+          38,
+          53,
+          33
+        ],
+        "crown": [
+          53,
+          89,
+          38
+        ]
+      },
+      "b_juniperus_communis_2w": {
+        "trunk": [
+          45,
+          57,
+          37
+        ],
+        "crown": [
+          65,
+          95,
+          45
+        ]
+      },
+      "b_phragmites_australis_1": {
+        "trunk": [
+          57,
+          77,
+          48
+        ],
+        "crown": [
+          79,
+          130,
+          56
+        ]
+      },
+      "b_phragmites_australis_1b": {
+        "trunk": [
+          60,
+          81,
+          56
+        ],
+        "crown": [
+          85,
+          135,
+          72
+        ]
+      },
+      "b_rosa_canina_0s": {
+        "trunk": [
+          76,
+          88,
+          60
+        ],
+        "crown": [
+          116,
+          143,
+          73
+        ]
+      },
+      "b_rosa_canina_1s": {
+        "trunk": [
+          76,
+          88,
+          56
+        ],
+        "crown": [
+          115,
+          146,
+          62
+        ]
+      },
+      "b_rubus_idaeus_0s": {
+        "trunk": [
+          53,
+          70,
+          41
+        ],
+        "crown": [
+          77,
+          117,
+          47
+        ]
+      },
+      "b_rubus_idaeus_1s": {
+        "trunk": [
+          53,
+          69,
+          42
+        ],
+        "crown": [
+          75,
+          115,
+          47
+        ]
+      },
+      "b_salix_cinerea_0": {
+        "trunk": [
+          49,
+          67,
+          43
+        ],
+        "crown": [
+          68,
+          113,
+          53
+        ]
+      },
+      "b_salix_cinerea_1": {
+        "trunk": [
+          45,
+          64,
+          38
+        ],
+        "crown": [
+          62,
+          107,
+          44
+        ]
+      },
+      "b_salix_cinerea_1w": {
+        "trunk": [
+          45,
+          62,
+          37
+        ],
+        "crown": [
+          61,
+          106,
+          43
+        ]
+      },
+      "b_sambucus_nigra_1": {
+        "trunk": [
+          52,
+          68,
+          42
+        ],
+        "crown": [
+          73,
+          114,
+          48
+        ]
+      },
+      "b_sambucus_nigra_2": {
+        "trunk": [
+          53,
+          70,
+          45
+        ],
+        "crown": [
+          76,
+          116,
+          56
+        ]
+      },
+      "t_alnus_glutinosa_2f": {
+        "trunk": [
+          82,
+          96,
+          90
+        ],
+        "crown": [
+          93,
+          143,
+          68
+        ]
+      },
+      "t_alnus_glutinosa_2s": {
+        "trunk": [
+          82,
+          96,
+          86
+        ],
+        "crown": [
+          83,
+          133,
+          55
+        ]
+      },
+      "t_alnus_glutinosa_3s": {
+        "trunk": [
+          79,
+          93,
+          85
+        ],
+        "crown": [
+          71,
+          121,
+          43
+        ]
+      },
+      "t_betula_pendula_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          55,
+          128,
+          53
+        ]
+      },
+      "t_betula_pendula_1f": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          51,
+          112,
+          34
+        ]
+      },
+      "t_betula_pendula_1s": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          58,
+          121,
+          40
+        ]
+      },
+      "t_betula_pendula_1sw": {
+        "trunk": [
+          99,
+          103,
+          106
+        ],
+        "crown": [
+          58,
+          123,
+          40
+        ]
+      },
+      "t_betula_pendula_2f": {
+        "trunk": [
+          90,
+          95,
+          97
+        ],
+        "crown": [
+          56,
+          112,
+          38
+        ]
+      },
+      "t_betula_pendula_2s": {
+        "trunk": [
+          81,
+          85,
+          87
+        ],
+        "crown": [
+          49,
+          104,
+          33
+        ]
+      },
+      "t_betula_pendula_2sd": {
+        "trunk": [
+          87,
+          91,
+          91
+        ],
+        "crown": [
+          159,
+          164,
+          177
+        ]
+      },
+      "t_betula_pendula_2sw": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          57,
+          115,
+          44
+        ]
+      },
+      "t_betula_pendula_2t": {
+        "trunk": [
+          87,
+          93,
+          94
+        ],
+        "crown": [
+          56,
+          111,
+          41
+        ]
+      },
+      "t_betula_pendula_3f": {
+        "trunk": [
+          89,
+          92,
+          100
+        ],
+        "crown": [
+          54,
+          109,
+          41
+        ]
+      },
+      "t_betula_pendula_3s": {
+        "trunk": [
+          89,
+          91,
+          98
+        ],
+        "crown": [
+          56,
+          109,
+          38
+        ]
+      },
+      "t_betula_pendula_3sw": {
+        "trunk": [
+          96,
+          102,
+          106
+        ],
+        "crown": [
+          63,
+          121,
+          48
+        ]
+      },
+      "t_betula_pendula_stem_01": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          116,
+          111,
+          106
+        ]
+      },
+      "t_carpinus_betulus_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          147,
+          175,
+          137
+        ]
+      },
+      "t_carpinus_betulus_0s": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          137,
+          167,
+          122
+        ]
+      },
+      "t_carpinus_betulus_3s": {
+        "trunk": [
+          78,
+          90,
+          79
+        ],
+        "crown": [
+          60,
+          113,
+          40
+        ]
+      },
+      "t_malus_domestica_2s": {
+        "trunk": [
+          77,
+          86,
+          82
+        ],
+        "crown": [
+          78,
+          126,
+          48
+        ]
+      },
+      "t_picea_abies_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          62,
+          100,
+          67
+        ]
+      },
+      "t_picea_abies_1f": {
+        "trunk": [
+          77,
+          84,
+          81
+        ],
+        "crown": [
+          43,
+          73,
+          43
+        ]
+      },
+      "t_picea_abies_1s": {
+        "trunk": [
+          65,
+          69,
+          71
+        ],
+        "crown": [
+          42,
+          80,
+          44
+        ]
+      },
+      "t_picea_abies_2d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          86,
+          94,
+          81
+        ]
+      },
+      "t_picea_abies_2s": {
+        "trunk": [
+          66,
+          77,
+          62
+        ],
+        "crown": [
+          45,
+          71,
+          45
+        ]
+      },
+      "t_picea_abies_3d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          90,
+          98,
+          90
+        ]
+      },
+      "t_picea_abies_3d_high": {
+        "trunk": [
+          73,
+          74,
+          80
+        ],
+        "crown": [
+          95,
+          102,
+          92
+        ]
+      },
+      "t_picea_abies_3f": {
+        "trunk": [
+          82,
+          92,
+          80
+        ],
+        "crown": [
+          59,
+          84,
+          57
+        ]
+      },
+      "t_picea_abies_3f_high": {
+        "trunk": [
+          84,
+          92,
+          84
+        ],
+        "crown": [
+          60,
+          85,
+          58
+        ]
+      },
+      "t_picea_abies_3s": {
+        "trunk": [
+          51,
+          66,
+          54
+        ],
+        "crown": [
+          52,
+          80,
+          52
+        ]
+      },
+      "t_pinus_sylvestris_0f": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_pinus_sylvestris_0s": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_pinus_sylvestris_1f": {
+        "trunk": [
+          79,
+          79,
+          86
+        ],
+        "crown": [
+          64,
+          84,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_1s": {
+        "trunk": [
+          88,
+          88,
+          94
+        ],
+        "crown": [
+          60,
+          82,
+          47
+        ]
+      },
+      "t_pinus_sylvestris_2f": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          60,
+          83,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_2s": {
+        "trunk": [
+          77,
+          76,
+          82
+        ],
+        "crown": [
+          57,
+          80,
+          50
+        ]
+      },
+      "t_pinus_sylvestris_3f": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          66,
+          86,
+          53
+        ]
+      },
+      "t_pinus_sylvestris_3f_high": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          65,
+          87,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_3s": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          61,
+          86,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_3w": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          68,
+          93,
+          58
+        ]
+      },
+      "t_pinus_sylvestris_3x": {
+        "trunk": [
+          78,
+          76,
+          85
+        ],
+        "crown": [
+          71,
+          94,
+          61
+        ]
+      },
+      "t_populus_nigra_3s": {
+        "trunk": [
+          69,
+          80,
+          81
+        ],
+        "crown": [
+          46,
+          97,
+          31
+        ]
+      },
+      "t_prunus_domestica_2s": {
+        "trunk": [
+          74,
+          82,
+          66
+        ],
+        "crown": [
+          66,
+          109,
+          43
+        ]
+      },
+      "t_salix_fragilis_2s": {
+        "trunk": [
+          81,
+          87,
+          90
+        ],
+        "crown": [
+          74,
+          111,
+          58
+        ]
+      },
+      "t_salix_fragilis_3s": {
+        "trunk": [
+          80,
+          87,
+          88
+        ],
+        "crown": [
+          87,
+          118,
+          77
+        ]
+      },
+      "t_sorbus_aucuparia_1w": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          103,
+          153,
+          70
+        ]
+      },
+      "t_sorbus_aucuparia_2f": {
+        "trunk": [
+          87,
+          101,
+          99
+        ],
+        "crown": [
+          87,
+          135,
+          52
+        ]
+      },
+      "t_sorbus_aucuparia_2w": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          97,
+          148,
+          67
+        ]
+      },
+      "t_tilia_cordata_3s": {
+        "trunk": [
+          63,
+          79,
+          71
+        ],
+        "crown": [
+          50,
+          98,
+          33
+        ]
+      }
+    },
+    "kolguyev": {
+      "B_Calamagrostis_epigejos_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "B_Calamagrostis_epigejos_2_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "T_Pinus_sylvestris_02_0c": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_0f": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_0s": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_1f": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_1s": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_1sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2c": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2f": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2f_a": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2fw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_2swb": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_3d": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_HERO_1sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "T_Pinus_sylvestris_02_Hero_3s": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "b_betula_nana_0_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_betula_nana_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_betula_nana_1d_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_corylus_avellana_1": {
+        "trunk": [
+          51,
+          72,
+          40
+        ],
+        "crown": [
+          69,
+          122,
+          41
+        ]
+      },
+      "b_corylus_avellana_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_corylus_avellana_1l": {
+        "trunk": [
+          50,
+          70,
+          38
+        ],
+        "crown": [
+          67,
+          120,
+          39
+        ]
+      },
+      "b_corylus_avellana_1l_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_corylus_avellana_2_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_juniperus_communis_0": {
+        "trunk": [
+          48,
+          60,
+          40
+        ],
+        "crown": [
+          69,
+          99,
+          49
+        ]
+      },
+      "b_juniperus_communis_1s": {
+        "trunk": [
+          49,
+          64,
+          41
+        ],
+        "crown": [
+          70,
+          107,
+          50
+        ]
+      },
+      "b_juniperus_communis_2s": {
+        "trunk": [
+          38,
+          53,
+          33
+        ],
+        "crown": [
+          53,
+          89,
+          38
+        ]
+      },
+      "b_juniperus_communis_2w": {
+        "trunk": [
+          45,
+          57,
+          37
+        ],
+        "crown": [
+          65,
+          95,
+          45
+        ]
+      },
+      "b_phragmites_australis_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_phragmites_australis_1b_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_rosa_canina_0s": {
+        "trunk": [
+          76,
+          88,
+          60
+        ],
+        "crown": [
+          116,
+          143,
+          73
+        ]
+      },
+      "b_rosa_canina_1s_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_rubus_idaeus_0s_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_rubus_idaeus_1s_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_salix_cinerea_0_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_salix_cinerea_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_salix_cinerea_1w_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_sambucus_nigra_1_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "b_sambucus_nigra_2_aut": {
+        "trunk": [
+          44,
+          79,
+          23
+        ],
+        "crown": [
+          51,
+          139,
+          1
+        ]
+      },
+      "t_alnus_glutinosa_2f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_alnus_glutinosa_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_alnus_glutinosa_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_0_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_1f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_1s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_1sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_2f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_2sd": {
+        "trunk": [
+          87,
+          91,
+          91
+        ],
+        "crown": [
+          159,
+          164,
+          177
+        ]
+      },
+      "t_betula_pendula_2sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_2t_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_3f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_3sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_betula_pendula_stem_01": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          116,
+          111,
+          106
+        ]
+      },
+      "t_carpinus_betulus_0_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_0s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_1f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_2f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_3d": {
+        "trunk": [
+          78,
+          87,
+          83
+        ],
+        "crown": [
+          88,
+          113,
+          103
+        ]
+      },
+      "t_carpinus_betulus_3d_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_3f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_carpinus_betulus_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_larix_decidua_1s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_larix_decidua_2fb_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_larix_decidua_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_malus_domestica_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_0": {
+        "trunk": [
+          108,
+          108,
+          108
+        ],
+        "crown": [
+          62,
+          100,
+          67
+        ]
+      },
+      "t_picea_abies_0sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_1dw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_1f": {
+        "trunk": [
+          77,
+          84,
+          81
+        ],
+        "crown": [
+          43,
+          73,
+          43
+        ]
+      },
+      "t_picea_abies_1fw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_1s": {
+        "trunk": [
+          65,
+          69,
+          71
+        ],
+        "crown": [
+          42,
+          80,
+          44
+        ]
+      },
+      "t_picea_abies_1sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_2d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          86,
+          94,
+          81
+        ]
+      },
+      "t_picea_abies_2d_non-forest": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_2dw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_2s": {
+        "trunk": [
+          66,
+          77,
+          62
+        ],
+        "crown": [
+          45,
+          71,
+          45
+        ]
+      },
+      "t_picea_abies_2sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_3d": {
+        "trunk": [
+          73,
+          74,
+          77
+        ],
+        "crown": [
+          90,
+          98,
+          90
+        ]
+      },
+      "t_picea_abies_3d_non-forest": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_3dw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_3f": {
+        "trunk": [
+          82,
+          92,
+          80
+        ],
+        "crown": [
+          59,
+          84,
+          57
+        ]
+      },
+      "t_picea_abies_3f_high": {
+        "trunk": [
+          84,
+          92,
+          84
+        ],
+        "crown": [
+          60,
+          85,
+          58
+        ]
+      },
+      "t_picea_abies_3fw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_picea_abies_3s": {
+        "trunk": [
+          51,
+          66,
+          54
+        ],
+        "crown": [
+          52,
+          80,
+          52
+        ]
+      },
+      "t_picea_abies_3sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_pinus_sylvestris_0f": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_pinus_sylvestris_0s": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_pinus_sylvestris_1f": {
+        "trunk": [
+          79,
+          79,
+          86
+        ],
+        "crown": [
+          64,
+          84,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_1s": {
+        "trunk": [
+          88,
+          88,
+          94
+        ],
+        "crown": [
+          60,
+          82,
+          47
+        ]
+      },
+      "t_pinus_sylvestris_2f": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          60,
+          83,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_2s": {
+        "trunk": [
+          77,
+          76,
+          82
+        ],
+        "crown": [
+          57,
+          80,
+          50
+        ]
+      },
+      "t_pinus_sylvestris_3f": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          66,
+          86,
+          53
+        ]
+      },
+      "t_pinus_sylvestris_3f_high": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          65,
+          87,
+          55
+        ]
+      },
+      "t_pinus_sylvestris_3s": {
+        "trunk": [
+          77,
+          77,
+          83
+        ],
+        "crown": [
+          61,
+          86,
+          51
+        ]
+      },
+      "t_pinus_sylvestris_3w": {
+        "trunk": [
+          78,
+          78,
+          86
+        ],
+        "crown": [
+          68,
+          93,
+          58
+        ]
+      },
+      "t_pinus_sylvestris_3x": {
+        "trunk": [
+          78,
+          76,
+          85
+        ],
+        "crown": [
+          71,
+          94,
+          61
+        ]
+      },
+      "t_populus_nigra_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_prunus_domestica_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_salix_fragilis_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_salix_fragilis_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_1sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_1w_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_2f_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_2s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_2sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_2w_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_3sw": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_sorbus_aucuparia_3sw_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      },
+      "t_tilia_cordata_3s_aut": {
+        "trunk": [
+          92,
+          65,
+          38
+        ],
+        "crown": [
+          29,
+          129,
+          16
+        ]
+      }
+    }
+  },
+  "blast": {
+    "HE M821": {
+      "kill": 18,
+      "danger": 27
+    },
+    "HE O-832DU": {
+      "kill": 11,
+      "danger": 16
+    },
+    "Practice M879": {
+      "kill": 0,
+      "danger": 5
+    },
+    "Smoke M819": {
+      "kill": 0,
+      "danger": 5
+    },
+    "Smoke D-832DU": {
+      "kill": 0,
+      "danger": 5
+    }
+  },
+  "sound": {
+    "noise": {
+      "still": -55,
+      "breeze": -50,
+      "windy": -45,
+      "storm": -40
+    },
+    "reach": {
+      "rifle": {
+        "still": 975,
+        "breeze": 555,
+        "windy": 315,
+        "storm": 175
+      },
+      "rifle-s": {
+        "still": 545,
+        "breeze": 310,
+        "windy": 175,
+        "storm": 100
+      },
+      "mg": {
+        "still": 1215,
+        "breeze": 695,
+        "windy": 395,
+        "storm": 225
+      },
+      "hmg": {
+        "still": 1995,
+        "breeze": 1150,
+        "windy": 655,
+        "storm": 370
+      },
+      "mortar": {
+        "still": 585,
+        "breeze": 330,
+        "windy": 185,
+        "storm": 105
+      },
+      "he": {
+        "still": 835,
+        "breeze": 475,
+        "windy": 270,
+        "storm": 150
+      },
+      "smoke": {
+        "still": 260,
+        "breeze": 150,
+        "windy": 85,
+        "storm": 45
+      },
+      "illum": {
+        "still": 645,
+        "breeze": 365,
+        "windy": 205,
+        "storm": 115
+      }
+    }
+  },
+  "mortar": {
+    "shellPhysics": {
+      "M252|HE M821": {
+        "v0": 66,
+        "k": 0.00011379310344827588,
+        "rings": {
+          "0": 1,
+          "1": 1.531,
+          "2": 2.085,
+          "3": 2.541,
+          "4": 2.977
+        }
+      },
+      "M252|Practice M879": {
+        "v0": 66,
+        "k": 0.00011009389671361503,
+        "rings": {
+          "0": 1,
+          "1": 1.573,
+          "2": 2.082,
+          "3": 2.532,
+          "4": 2.932
+        }
+      },
+      "M252|Smoke M819": {
+        "v0": 137,
+        "k": 0.00018843298969072167,
+        "rings": {
+          "1": 0.666,
+          "2": 0.959,
+          "3": 1.184,
+          "4": 1.387
+        }
+      },
+      "M252|Illumination M853A1": {
+        "v0": 152,
+        "k": 0.000372,
+        "rings": {
+          "1": 0.638,
+          "2": 1,
+          "3": 1.281,
+          "4": 1.596
+        }
+      },
+      "2B14|HE O-832DU": {
+        "v0": 76,
+        "k": 0.00019838709677419354,
+        "rings": {
+          "0": 1,
+          "1": 1.321,
+          "2": 1.736,
+          "3": 2.087,
+          "4": 2.455
+        }
+      },
+      "2B14|Smoke D-832DU": {
+        "v0": 71,
+        "k": 0.0001882183908045977,
+        "rings": {
+          "0": 1,
+          "1": 1.339,
+          "2": 1.748,
+          "3": 2.086
+        }
+      },
+      "2B14|Illumination S-832C": {
+        "v0": 127,
+        "k": 0.0005230769230769231,
+        "rings": {
+          "1": 0.698,
+          "2": 1.111,
+          "3": 1.512,
+          "4": 2.154
+        }
+      }
+    },
+    "speedSD": 1.07,
+    "speedBias": 0.13,
+    "muzzleHeight": 1.3,
+    "barrelSD": {
+      "M252": [
+        0.003033600406122644,
+        0.004113522880794136
+      ],
+      "2B14": [
+        0.0038288160465625607,
+        0.0028863382504856227
+      ]
+    }
+  },
+  "constructionMapping": {
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_AA_MG_FIA_NSV_SPP.et": "aa-mg",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_AA_MG_USSR_NSV_SPP.et": "aa-mg",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_AA_MG_US_M2HB.et": "aa-mg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Antenna_S_FIA_01.et": "antenna",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Antenna_S_USSR_01.et": "antenna",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Antenna_S_US_01.et": "antenna",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_AmmoStorage_S_FIA_01.et": "armory",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_AmmoStorage_S_USSR_01.et": "armory",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_AmmoStorage_S_US_01.et": "armory",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadLarge/E_Barricade_L_USSR_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadLarge/E_Barricade_L_US_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadMedium/E_Barricade_M_USSR_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadMedium/E_Barricade_M_US_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadSmall/E_Barricade_S_USSR_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadSmall/E_Barricade_S_US_01.et": "barricade",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Bunker_S_FIA_01.et": "bunker",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Bunker_S_USSR_01.et": "bunker",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Bunker_S_US_01.et": "bunker",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetLarge_M_FIA_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetLarge_M_USSR_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetLarge_M_US_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetMedium_S_FIA_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetMedium_S_USSR_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetMedium_S_US_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetSmall_S_FIA_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetSmall_S_USSR_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CamoNetSmall_S_US_01.et": "camo-net",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadLarge/E_Checkpoint_L_USSR_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadLarge/E_Checkpoint_L_US_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadMedium/E_Checkpoint_M_USSR_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadMedium/E_Checkpoint_M_US_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadSmall/E_Checkpoint_S_USSR_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotRoadSmall/E_Checkpoint_S_US_01.et": "checkpoint",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Dragonsteeth_S_US_01.et": "dragon-teeth",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_FloodlightGenerator_S_USSR_01.et": "floodlight",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_FloodlightGenerator_S_US_01.et": "floodlight",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_FuelStorage_S_FIA_01.et": "fuel",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_FuelStorage_S_USSR_01.et": "fuel",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_FuelStorage_S_US_01.et": "fuel",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_GuardTower_S_USSR_01.et": "guard-tower",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_GuardTower_S_US_01.et": "guard-tower",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Headquarters_S_Conflict_FIA_01.et": "headquarters",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Headquarters_S_Conflict_USSR_01.et": "headquarters",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Headquarters_S_Conflict_US_01.et": "headquarters",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatMedium/E_VehicleMaintenance_M_Conflict_USSR_01.et": "heavy-depot",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatMedium/E_VehicleMaintenance_M_Conflict_US_01.et": "heavy-depot",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatLarge/E_Helipad_L_Conflict_USSR_01.et": "helipad",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatLarge/E_Helipad_L_Conflict_US_01.et": "helipad",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_MG_USSR_01_NSV.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_MG_USSR_01_NSV_SPP.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_MG_US_01_M2HB.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_S_FIA_02.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_S_USSR_02.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_S_US_02.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_Scoped_S_FIA_01.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_Scoped_S_USSR_01.et": "hmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatMedium/E_FieldHospital_M_Conflict_USSR_01.et": "hospital",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatMedium/E_FieldHospital_M_Conflict_US_01.et": "hospital",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatMedium/E_FieldHospital_M_FIA_01.et": "hospital",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_VehicleMaintenance_S_Conflict_USSR_01.et": "light-depot",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_VehicleMaintenance_S_Conflict_US_01.et": "light-depot",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_VehicleMaintenance_S_FIA_01.et": "light-depot",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatLarge/E_LivingArea_L_Conflict_USSR_01.et": "living",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatLarge/E_LivingArea_L_Conflict_US_01.et": "living",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_LivingArea_S_Conflict_USSR_01.et": "living",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_LivingArea_S_Conflict_US_01.et": "living",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_LivingArea_S_FIA_01.et": "living",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_M60_S_US_01.et": "lmg",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_Emplacement_MG_USSR_01_PKM.et": "lmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_S_USSR_01.et": "lmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MachineGunNest_S_US_01.et": "lmg",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MortarPlacement_S_FIA_01.et": "mortar-pit",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MortarPlacement_S_USSR_01.et": "mortar-pit",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_MortarPlacement_S_US_01.et": "mortar-pit",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_PlayerHub_S_FIA_01.et": "player-hub",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_PlayerHub_S_USSR_01.et": "player-hub",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_PlayerHub_S_US_01.et": "player-hub",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_CzechHedgehog_S_01_painted.et": "roadblock",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagRoundBurlap_S_USSR_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagRoundHighBurlap_S_USSR_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagRoundHighPlastic_S_US_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagRoundPlastic_S_US_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_FIA_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_USSR_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_USSR_02.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_USSR_03.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_USSR_04.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_US_01.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_US_02.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_US_03.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SandbagPosition_S_US_04.et": "sandbag-position",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SupplyCache_S_FIA_03_Empty.et": "supply",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SupplyCache_S_USSR_01.et": "supply",
+    "PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_SupplyCache_S_US_01.et": "supply",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagLongBurlap_S_USSR_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagLongHighBurlap_S_USSR_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagLongHighPlastic_S_US_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagLongPlastic_S_US_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagWallBurlap_S_USSR_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagWallPlastic_S_US_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagWallSolidBurlap_S_USSR_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_SandbagWallSolidPlastic_S_US_01.et": "wall",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_BarbedTapeKnifeRest_S_US_01.et": "wire",
+    "PrefabsEditable/Auto/Compositions/Misc/FreeRoamBuilding/E_BarbedTapeTriple_S_USSR_01.et": "wire"
+  }
+}
