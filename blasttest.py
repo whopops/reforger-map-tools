@@ -50,6 +50,8 @@ SPOTS = 12
 
 def prefab_name(path):
     """{GUID}path for a game file, from the resource database."""
+    if path.startswith("{"):
+        return path
     import re
     from rmtlib.steam import Install
     rdb = os.path.join(Install(None).game_dir, 'addons', 'data', 'resourceDatabase.rdb')
@@ -152,9 +154,9 @@ def write_plan(rows):
 
 def run(shells=DEFAULT_SHELLS, trials=None):
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     write_plan(make_plan(shells)[:trials])
-    code, lines, status = Runner(Install(None)).run_game('blasttest', OUT_REL, WORLD, flag='-rmtBlast', stall=300, limit=3600)
+    code, lines, status = lab_runner(Install(None)).run_game('blasttest', OUT_REL, WORLD, flag='-rmtBlast', stall=300, limit=3600)
     print('exit', code, 'status', status)
 
 

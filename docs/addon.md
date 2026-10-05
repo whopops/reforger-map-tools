@@ -14,7 +14,8 @@ mod map) and starts the engine on it. Edit `addon/`, never `.build/`. `addon.gpr
 | `Scripts/WorkbenchGame/RMT/RMT_GridJobs.c` | WorkbenchGame | Chunk jobs: `terrain`, `entities`, `surface`. |
 | `Scripts/WorkbenchGame/RMT/RMT_WorldJobs.c` | WorkbenchGame | Whole-world jobs: `roads`, `sightlines`, `names`, `conflict`. |
 | `Scripts/WorkbenchGame/RMT/RMT_FoliageTrace.c` | WorkbenchGame | The `foliagetrace` experiment. |
-| `Scripts/WorkbenchGame/RMT/RMT_BallisticsJob.c` | WorkbenchGame | The `ballistics` job ([firetest.md](firetest.md)). Accepted by the plugin but not listed in `rmt.py`. |
+| `Scripts/WorkbenchGame/RMT/RMT_BallisticsJob.c` | WorkbenchGame | The `ballistics` job ([firetest.md](firetest.md)). Accepted by the plugin and `rmt.py export --jobs`. |
+| `Scripts/WorkbenchGame/RMT/RMT_MortarTablesJob.c` | WorkbenchGame | Native mortar reference tables from a profile-relative CSV plan; driven by `webdata.py mortar`. |
 | `Scripts/Game/RMT/RMT_GameHook.c` | Game | When the game starts with `-rmtSat`, `-rmtFoliage`, `-rmtFire`, `-rmtGun`, `-rmtBlast` or `-rmtLauncher`, spawns the matching entity once the world is ready. |
 | `Scripts/Game/RMT/RMT_SatCapture.c` | Game | The satellite capture entity. |
 | `Scripts/Game/RMT/RMT_FoliageCapture.c` | Game | The foliage photograph entity. |
@@ -40,7 +41,7 @@ Addon" dialog blocks forever). `rmt.py` does this.
 
 | Argument | Meaning |
 |---|---|
-| `-rmtJob` | One job or a comma list: `probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`, `sightlines`, `foliagetrace`, `ballistics`, `conflict`; or `worlds` on its own. Unknown name: exit 2 before anything is loaded. |
+| `-rmtJob` | One job or a comma list: `probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`, `sightlines`, `foliagetrace`, `ballistics`, `mortar_tables`, `conflict`; or `worlds` on its own. Unknown name: exit 2 before anything is loaded. |
 | `-rmtOut` | Output folder, always `$profile:<relative path>`. Required. |
 | `-rmtWorld` | World resource (`{GUID}worlds/.../x.ent`). Required for every job except `worlds`. |
 | `-rmtTile` | Chunk size in metres (default 500, minimum 10). |

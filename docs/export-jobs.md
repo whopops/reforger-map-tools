@@ -129,7 +129,7 @@ could replace the foliage photographs. They cannot (see "Why photographs" in
 Run in the game, not Workbench: [satellite-and-foliage.md](satellite-and-foliage.md).
 
 ### `ballistics`
-Accepted by the plugin but not by `--jobs`; see [firetest.md](firetest.md).
+Accepted by the plugin and `rmt.py export --jobs`; see [firetest.md](firetest.md).
 
 ### `worlds`
 Not an `export` job. It backs `rmt.py worlds`: one launch that writes `worlds.txt` (every `.ent` Workbench can see)

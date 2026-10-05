@@ -211,6 +211,29 @@ TOOLS = [
     },
 ]
 
+# All categories use explicit target selection through labtest.py. Keep standalone CLIs available.
+for tool in TOOLS:
+    tool['selection'] = True
+    if tool['key'] in ('firetest', 'blasttest', 'rockettest', 'bullettest', 'launchertest'):
+        tool['desc'] = 'Test only the ticked baseline or installed-mod targets. Inspect the selection to choose resolved projectiles and validate dependencies. Results are kept in a separate folder for this selection.'
+    elif tool['key'] == 'audible':
+        tool['desc'] = 'Measure selected WAV samples from installed addons. Choose a calibrated shot level at 2 metres for reach estimates; results remain separate for each selection.'
+    elif tool['key'] == 'pak':
+        tool['desc'] = 'Search or read archives from the ticked installed addons, including Workshop mods.'
+    for command in tool['cmds']:
+        command['minutes'] = None
+        if tool['key'] in ('rockettest', 'bullettest') and command['name'] == 'run':
+            command['desc'] = 'Fly only the selected projectile pairings, one game run per wind. Runtime depends on selection size; completed successful blocks can be resumed.'
+    if tool['key'] == 'firetest':
+        for command in tool['cmds']:
+            if command['name'] == 'plan': command['workbench'] = True
+    for command in tool['cmds']:
+        command['legacy_opts'] = command['opts']
+        command['opts'] = [o for o in command['opts'] if o['flag'] not in ('--shells', '--out')
+                           and not (tool['key'] == 'conflict' and o['flag'] is None)]
+        if tool['key'] == 'conflict':
+            command['opts'].append(opt('--map-id', 'Website map id (for a selected scenario)', 'text', '', 'Required when an explicit mod scenario cannot be matched to an installed terrain map.'))
+
 BY_KEY = {t["key"]: t for t in TOOLS}
 
 
@@ -227,7 +250,7 @@ def build(tool, command, values):
     """The wrapper arguments for rmt_gui.py: ['--script', file, ...] or ['--module', name, ...].
     values: option index -> value (str, int, float, or a list for shells)."""
     positional, flagged = [], []
-    for i, o in enumerate(command["opts"]):
+    for i, o in enumerate(command.get("legacy_opts", command["opts"])):
         v = values.get(i, o["default"])
         if o["kind"] == "shells":
             v = ",".join(v or ())
@@ -268,3 +291,19 @@ def shown(args):
         head = ["python", script] if os.sep not in script else \
             ["cd", os.path.dirname(script), "&&", "python", os.path.basename(script)]
     return " ".join(head + [f'"{x}"' if " " in x else x for x in a[2:]])
+
+
+def selected_build(tool, command, values, selection, output, workbench=None):
+    """Selected wrapper command; forwards supported form values without legacy fixed target lists."""
+    args = ['--script', 'labtest.py', command['name'], '--tool', tool['key'], '--selection', selection, '--output', output]
+    if workbench: args += ['--workbench', workbench]
+    for i, option in enumerate(command['opts']):
+        value = values.get(i, option['default'])
+        if value is None or value == '': continue
+        flag = option['flag']
+        if flag is None:
+            if tool['key'] == 'pak': flag = '--pattern' if command['name'] == 'list' else '--path'
+            else:
+                args.append(str(value)); continue
+        args += [flag, str(value)]
+    return (['--stderr-info']+args) if tool['key'] == 'selftest' else args

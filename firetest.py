@@ -268,10 +268,11 @@ def make_plan(seed=11):
                 add('W', w, s, frm, to, wind, 6)
     # P: the same aim with no wind, then 10 m/s from four sides, aimed with no wind correction
     frm, to = pairs(1, 1500, 1500, (-5, 5))[0]
-    sol = solve('M252', 'HE M821', frm, to, ter, None)
-    for wind in (None, (10, 180), (10, 270), (10, 0), (10, 90)):
+    probe_w, probe_s = next(iter(SHELLS))
+    sol = solve(probe_w, probe_s, frm, to, ter, None)
+    for wind in ((None, (10, 180), (10, 270), (10, 0), (10, 90)) if sol['best'] else ()):
         row('P', sol, frm, to, wind, 6, probe=True)
-        rows[-1].update(w='M252', s='HE M821')
+        rows[-1].update(w=probe_w, s=probe_s)
     # S: 20 rounds at a short, middle and long aim for each mortar (no wind)
     for w, s in SHELLS:
         for dmin, dmax in ((500, 700), (1400, 1600), (2300, 2500)):
@@ -281,9 +282,10 @@ def make_plan(seed=11):
     return rows
 
 
-def group_plan(dist=1200, ring=3, rounds=10, w='M252', s='HE M821', seed=5):
+def group_plan(dist=1200, ring=3, rounds=10, w=None, s=None, seed=5):
     """One aim, fired `rounds` times with the same elevation and azimuth: the spread a crew sees re-laying the same
     numbers after every round. Level, open ground at both ends, no wind, the ring asked for."""
+    if w is None or s is None: w, s = next(iter(SHELLS))
     ter = Terrain()
     rnd = random.Random(seed)
     for _ in range(100000):
@@ -343,7 +345,7 @@ def gun_run(p, rounds, gap):
     """Fire plan p (from group_plan) through a real mortar (RMT_GunTest.c): laid on the numbers before every round."""
     from blasttest import prefab_name
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     d = os.path.join(Install(None).game_profile, *GUN_REL.split('/'), 'gun')
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, 'plan.csv'), 'w', newline='') as f:
@@ -352,7 +354,7 @@ def gun_run(p, rounds, gap):
                 f"{p['az']:.5f},{p['elev']:.5f},{rounds},{p['tx']:.2f},{p['tz']:.2f},{gap}\n")
     json.dump([p], open(os.path.join(d, 'plan.json'), 'w'), indent=1)
     print(f"plan: {p['w']} {p['s']} ring {p['ring']}, {rounds} rounds at {p['d']:.0f} m -> {d}")
-    code, lines, status = Runner(Install(None)).run_game('guntest', GUN_REL, WORLD, flag='-rmtGun', stall=300, limit=3600)
+    code, lines, status = lab_runner(Install(None)).run_game('guntest', GUN_REL, WORLD, flag='-rmtGun', stall=300, limit=3600)
     print('exit', code, 'status', status)
     return d
 
@@ -470,7 +472,7 @@ def barrel_plan(per_ring=40, track_every=8, seed=21):
 
 def barrel_run(rows, rel=BARREL_REL):
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     d = os.path.join(Install(None).game_profile, *rel.split('/'), 'gun')
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, 'plan.csv'), 'w', newline='') as f:
@@ -480,7 +482,7 @@ def barrel_run(rows, rel=BARREL_REL):
                     f"{r['elev']:.5f},1,{r['tx']:.2f},{r['tz']:.2f},{r['gap']},{r['track']}\n")
     json.dump(rows, open(os.path.join(d, 'plan.json'), 'w'), indent=1)
     print(f'plan: {len(rows)} rounds ({sum(r["track"] for r in rows)} followed to impact) -> {d}')
-    code, lines, status = Runner(Install(None)).run_game('guntest', rel, WORLD, flag='-rmtGun', stall=600, limit=3 * 3600)
+    code, lines, status = lab_runner(Install(None)).run_game('guntest', rel, WORLD, flag='-rmtGun', stall=600, limit=3 * 3600)
     print('exit', code, 'status', status)
     return d
 
@@ -673,9 +675,9 @@ def write_plan(rows):
 
 def run(rows=None, args=()):
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     write_plan(rows or make_plan())
-    code, lines, status = Runner(Install(None)).run_game('firetest', OUT_REL, WORLD, flag='-rmtFire', args=args, stall=300, limit=3600)
+    code, lines, status = lab_runner(Install(None)).run_game('firetest', OUT_REL, WORLD, flag='-rmtFire', args=args, stall=300, limit=3600)
     print('exit', code, 'status', status)
 
 

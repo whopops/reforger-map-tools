@@ -492,3 +492,12 @@ python -c "from rmtlib.steam import Install; from rmtlib.workbench import Runner
 The result lands in `<Workbench profile>\rmt\ballistics\ballistics\sim.csv`. (This exact line has not been run for
 this document; `Runner.run` takes any job name the plugin accepts. To make `rmt.py export --jobs ballistics` work,
 add `"ballistics"` to `ALL_JOBS` in `rmtlib/export.py`.)
+
+
+## Choosing targets in the desktop app
+
+Labs now provides baseline/mod target checklists for fire, blast, bullet, rocket and launcher tests.
+Use **Scan installed targets**, choose an addon, tick targets and inspect resolved ammunition pairings.
+The selected CLI is `labtest.py`; the standalone commands in this document retain baseline presets.
+Read [labs-selection.md](labs-selection.md) for native mortar planning, measured dataset requirements,
+saved-run reporting and resume verification.

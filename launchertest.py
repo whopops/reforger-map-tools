@@ -128,9 +128,9 @@ def write_plan(rows):
 
 def run():
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     write_plan(make_plan())
-    code, lines, status = Runner(Install(None)).run_game('launchertest', OUT_REL, WORLD, flag='-rmtLauncher',
+    code, lines, status = lab_runner(Install(None)).run_game('launchertest', OUT_REL, WORLD, flag='-rmtLauncher',
                                                          stall=300, limit=5400)
     print('exit', code, 'status', status)
 

@@ -568,10 +568,12 @@ def site_json(T):
     """What the field map reads (static/data/rockets.json)."""
     launchers = {}
     for lname, s in SIGHTS.items():
+        if not any(name in T for name in s['rockets']):
+            continue
         sights = {'iron': {str(r): round(a, 3) for r, a in s['iron'].items()}}
         if lname == 'RPG-7':
             sights['pgo7'] = {rk: {str(r): round((y - PGO7_CROSS) / PGO7_PX_DEG, 3) for r, y in rows.items()}
                               for rk, rows in PGO7_ROWS.items()}
-        launchers[lname] = {'rockets': s['rockets'], 'spawn': s['spawn'], 'sights': sights}
+        launchers[lname] = {'rockets': [name for name in s['rockets'] if name in T], 'spawn': s['spawn'], 'sights': sights}
     return {'about': 'Measured in the game by reforger-map-tools rockettest.py; see its rocketfit.py',
             'pgo7_lead_deg': PGO7_LEAD, 'launchers': launchers, 'rockets': T}

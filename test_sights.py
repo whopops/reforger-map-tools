@@ -57,6 +57,23 @@ class SightTests(unittest.TestCase):
             Image.new('RGBA', (32, 32), (0, 0, 0, 255)).save(path)
             with self.assertRaises(ValueError): sights.export(spec, root/'replaced')
 
+    def test_vehicle_walk_excludes_default_crew_personal_sights(self):
+        from test_custom_ballistics import CustomBallisticsTests
+        fixture = CustomBallisticsTests(); fixture.setUp()
+        try:
+            guid = 'AAAAAAAAAAAAAAAA'; fixture.addon(guid)
+            mounted = fixture.record(guid, 'Prefabs/Weapons/Turret.et',
+                'Entity {\n SightsComponent "{1111111111111111}" {\n }\n}', '2222222222222222')
+            crew = fixture.record(guid, 'Prefabs/Characters/Crew.et',
+                'Entity {\n SightsComponent "{3333333333333333}" {\n }\n}', '4444444444444444')
+            vehicle = fixture.record(guid, 'Prefabs/Vehicles/Vehicle.et',
+                'Entity {\n Turret "'+mounted['resource']+'"\n Crew "'+crew['resource']+'"\n}', '5555555555555555')
+            report = sights.extract(fixture.catalog, vehicle['resource'], guid, fixture.root/'sights')
+            self.assertEqual([s['resource'] for s in report['sights']], [mounted['resource']])
+            self.assertEqual(report['warnings'], [])
+        finally:
+            fixture.doCleanups()
+
     def spec(self, root):
         path = root/'input.png'; Image.new('RGBA', (32, 32), (255, 255, 255, 100)).save(path)
         return {'schema': 'rmt-sight-v1', 'name': 'test', 'kind': 'texture', 'image': str(path),

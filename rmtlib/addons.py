@@ -121,23 +121,71 @@ def is_terrain_world(resource):
     return stem == folder or stem == "empty" + folder
 
 
+def classify_world(resource, data):
+    """Conservative terrain evidence from compiled or text .ent bytes, never addon naming."""
+    path = resource.split('}', 1)[-1].replace('\\', '/').lower()
+    if (_NOT_MAPS.search(path) or re.search(r'(^|/)([^/]*test[^/]*|[^/]*tutorial[^/]*|pbr_vfx)(/|\.|$)', path)
+            or any(word in path for word in ('imagegenerator', 'assetimages', 'imagegeneration'))):
+        return 'utility', 'Editor, image-generation or test world'
+    if data is None:
+        return 'unknown', 'World source could not be read; inspect in Workbench'
+    if b'GenericTerrainEntity' in data:
+        return 'terrain', 'World contains a terrain entity'
+    if b'SubScene' in data or b'Parent' in data:
+        return 'scenario', 'Scene inherits another world; no local terrain evidence'
+    return 'utility', 'No terrain entity found in the inspected world header'
+
+
+def _world_headers(addon, wanted):
+    # Terrain declarations normally live at the beginning of compiled worlds. Limit decompression
+    # to 512 KiB rather than loading a 70+ MiB terrain just to populate the GUI.
+    import zlib
+    from pathlib import Path
+    from .ballistics import archive_entries
+    headers = {}; limit = 512*1024
+    for archive in sorted(Path(addon.folder).rglob('*.pak')):
+        if any(part.lower() == 'temp' for part in archive.relative_to(addon.folder).parts):
+            continue
+        try:
+            for path, off, stored, size, comp in archive_entries(archive):
+                if path.lower() not in wanted:
+                    continue
+                with archive.open('rb') as file:
+                    file.seek(off)
+                    if not comp:
+                        headers[path.lower()] = file.read(min(stored, limit))
+                    else:
+                        decoder = zlib.decompressobj(); data = bytearray(); remaining = stored
+                        while remaining and len(data) < limit:
+                            chunk = file.read(min(65536, remaining)); remaining -= len(chunk)
+                            if not chunk: break
+                            data.extend(decoder.decompress(chunk, limit-len(data)))
+                        headers[path.lower()] = bytes(data)
+        except (OSError, ValueError, zlib.error):
+            continue
+    for path in wanted:
+        file = Path(addon.folder)/path
+        if file.is_file():
+            try:
+                with file.open('rb') as stream: headers[path] = stream.read(limit)
+            except OSError: pass
+    return headers
+
+
 def list_worlds(install):
-    """Every world: [{resource, name, addon, addonGuid, source, map, terrain}], game worlds first."""
+    """All world resources, with conservative terrain/scenario/utility/unknown classification."""
     out = []
     for a in installed(install):
-        for w in a.worlds():
-            path = w.split("}", 1)[-1]
-            if not path.lower().startswith("worlds/"):
-                continue
-            out.append({
-                "resource": w,
-                "name": os.path.splitext(os.path.basename(path))[0],
-                "addon": a.title,
-                "addonGuid": a.guid,
-                "source": a.source,
-                "map": not _NOT_MAPS.search(path),
-                "terrain": is_terrain_world(w),
-            })
+        worlds = [w for w in a.worlds() if w.split('}', 1)[-1].lower().startswith('worlds/')]
+        wanted = {w.split('}', 1)[-1].lower() for w in worlds}
+        headers = _world_headers(a, wanted) if worlds else {}
+        for w in worlds:
+            path = w.split('}', 1)[-1]
+            kind, reason = classify_world(w, headers.get(path.lower()))
+            out.append({'resource': w, 'name': os.path.splitext(os.path.basename(path))[0],
+                        'addon': a.title, 'addonGuid': a.guid, 'source': a.source,
+                        'map': kind == 'terrain', 'terrain': kind == 'terrain',
+                        'worldKind': kind, 'classificationReason': reason})
     return out
 
 

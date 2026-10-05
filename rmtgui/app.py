@@ -241,19 +241,20 @@ class WorldPage(QWidget):
         lay.addWidget(heading("World"))
         lay.addWidget(note("Every world in the game and your downloaded mods, read from their files (Workbench isn't "
                            "started). A mod map brings the mods it depends on along. By default only each map's base "
-                           "terrain is listed; game modes (Conflict, Game Master, ...) sit on the same terrain. "
+                           "terrain is listed when a terrain entity is found in its world header. Other scenarios and "
+                           "test/unknown worlds are available through the Advanced checkbox. "
                            "Weapon/vehicle mods may also contain test worlds. Use Ballistics to inspect their weapons and ammo."))
         row = QHBoxLayout()
         self.filter = QLineEdit()
         self.filter.setPlaceholderText("Filter…")
         self.filter.textChanged.connect(self.fill)
         row.addWidget(self.filter, 1)
-        self.show_all = QCheckBox("Show every world")
+        self.show_all = QCheckBox("Advanced: scenarios, test and unknown worlds")
         self.show_all.toggled.connect(self.fill)
         row.addWidget(self.show_all)
         lay.addLayout(row)
 
-        self.tree = tree(["World", "Addon", "Source", "Resource"])
+        self.tree = tree(["World", "Addon", "Source", "Resource", "World type"])
         self.tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.tree.setSortingEnabled(True)
         for col in (0, 1, 2):
@@ -300,12 +301,13 @@ class WorldPage(QWidget):
         self.tree.clear()
         pick = None
         for w in self.worlds:
-            if not everything and not (w["map"] and (w["terrain"] or w["source"] != "game")):
+            if not everything and not w["terrain"]:
                 continue
             if want and want not in (w["name"] + " " + w["addon"] + " " + w["resource"]).lower():
                 continue
             source = {"game": "Arma Reforger", "workshop": "Workshop mod", "project": "Your project"}[w["source"]]
-            item = QTreeWidgetItem([w["name"], w["addon"], source, w["resource"]])
+            item = QTreeWidgetItem([w["name"], w["addon"], source, w["resource"], w.get("worldKind", "unknown")])
+            item.setToolTip(0, w.get("classificationReason", ""))
             item.setData(0, Qt.ItemDataRole.UserRole, w)
             self.tree.addTopLevelItem(item)
             if w["resource"] == last:
@@ -835,6 +837,10 @@ class LabsPage(QWidget):
         right.addLayout(row)
         self.cmd_desc = note("")
         right.addWidget(self.cmd_desc)
+        from .labtargets import LabTargets
+        self.targets = LabTargets(self)
+        self.targets.changed.connect(self.update_line)
+        right.addWidget(self.targets)
         self.game_note = QLabel()
         self.game_note.setWordWrap(True)
         right.addWidget(self.game_note)
@@ -902,9 +908,10 @@ class LabsPage(QWidget):
         self.doc_btn.setVisible(bool(t.get("doc")))
         self.results_btn.setVisible(bool(t.get("results") or t.get("cwd")))
         site_file = t.get("site_file")
-        self.copy_btn.setVisible(bool(site_file))
+        self.copy_btn.setVisible(False)  # selected results are isolated; review before website installation
         if site_file:
             self.copy_btn.setText(f"Copy {site_file[1]} into the field map")
+        self.targets.set_tool(t["key"])
         self.cmd_changed(0)
 
     def cmd_changed(self, _i):
@@ -974,8 +981,10 @@ class LabsPage(QWidget):
         return out
 
     def update_line(self, *_):
+        if not hasattr(self, "cmdline") or not hasattr(self, "widgets"):
+            return
         c, v = self.command(), self.values()
-        self.cmdline.setText(labs.shown(labs.build(self.tool(), c, v)))
+        self.cmdline.setText(labs.shown(labs.selected_build(self.tool(), c, v, self.targets.selection_file(), str(self.targets.folder()), self.win.setup.workbench())))
         if labs.runs_game(c, v):
             mins = f", about {c['minutes']} minutes" if c["minutes"] else ""
             self.game_note.setText(f"Runs the game on screen{mins}. Steam must be running and the game closed; leave "
@@ -1004,7 +1013,7 @@ class LabsPage(QWidget):
             QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(paths.bundle(), *doc.split("/"))))
 
     def open_results(self):
-        d = self.results_folder()
+        d = self.targets.latest or str(self.targets.folder())
         if d and os.path.isdir(d):
             open_folder(d)
         else:
@@ -1028,12 +1037,15 @@ class LabsPage(QWidget):
 
     def start(self):
         t, c, v = self.tool(), self.command(), self.values()
+        if not self.targets.request()["targets"]:
+            QMessageBox.information(self, APP, "Tick at least one test target. Scan installed targets to include mods.")
+            return
         if any(o["kind"] == "shells" for o in c["opts"]) and not any(
                 v[i] for i, o in enumerate(c["opts"]) if o["kind"] == "shells"):
             QMessageBox.information(self, APP, "Tick at least one shell.")
             return
         game = labs.runs_game(c, v)
-        if c.get("workbench"):
+        if c.get("workbench") or (t["key"] == "firetest" and not v.get(next((i for i, o in enumerate(c["opts"]) if o["flag"] is None), -1)) and c["name"] != "score"):
             blocking = self.win.setup.blocking()
             if blocking:
                 QMessageBox.warning(self, APP, "Fix Setup checks before starting Workbench.")
@@ -1048,9 +1060,12 @@ class LabsPage(QWidget):
             if QMessageBox.question(self, APP, f"The game will open on screen and run by itself.{mins}\n\nLeave the "
                                                "PC alone meanwhile. Start?") != QMessageBox.StandardButton.Yes:
                 return
-        args = labs.build(t, c, v)
+        if not self.targets.request()["targets"]:
+            QMessageBox.information(self, APP, "Tick at least one test target. Scan installed targets to include mods.")
+            return
+        args = labs.selected_build(t, c, v, self.targets.selection_file(write=True), str(self.targets.folder()), self.win.setup.workbench())
         label = f"{t['title']}: {c['label']}"
-        self.win.launch_script(args, label, game, self.results_folder() if t.get("results") or t.get("cwd") else None)
+        self.win.launch_script(args, label, game, str(self.targets.folder()))
 
 
 # ------------------------------------------------------------------------------------------------ window

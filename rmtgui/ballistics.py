@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 
+from rmtlib.ballistics import matches_asset
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDoubleSpinBox,
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton,
@@ -35,9 +36,10 @@ class BallisticsPage(QWidget):
         row.addWidget(self.addon)
         self.kind = QComboBox()
         for label, key in [('Weapons, ammo and vehicles', None), ('Weapons', 'weapon'),
-                           ('Ammunition', 'ammunition'), ('Vehicles', 'vehicle'), ('All prefabs', 'all')]:
+                           ('Vehicles', 'vehicle'), ('Bullets / calibres', 'bullets'), ('Mortars / shells', 'mortars'),
+                           ('Rockets / missiles', 'rockets'), ('All ammunition', 'ammunition'), ('All resources (advanced)', 'all')]:
             self.kind.addItem(label, key)
-        self.kind.currentIndexChanged.connect(self.fill)
+        self.kind.currentIndexChanged.connect(self.refresh_addons)
         row.addWidget(self.kind)
         self.search = QLineEdit()
         self.search.setPlaceholderText('Search weapon, calibre or prefab path')
@@ -122,6 +124,19 @@ class BallisticsPage(QWidget):
     def scan_addons(self):
         self.command('scan')
 
+    def refresh_addons(self, *_):
+        selected = self.addon.currentData(); counts = {}
+        for record in self.records:
+            if matches_asset(record, self.kind.currentData()):
+                key = (record['addon'], record['addonGuid']); counts[key] = counts.get(key, 0)+1
+        self.addon.blockSignals(True); self.addon.clear()
+        self.addon.addItem('All related addons', None)
+        for (label, guid), count in sorted(counts.items()):
+            self.addon.addItem(f'{label} ({count} resources)', guid)
+        index = self.addon.findData(selected)
+        self.addon.setCurrentIndex(max(0, index)); self.addon.blockSignals(False)
+        self.fill()
+
     def fill(self, *_):
         self.tree.clear()
         query = self.search.text().strip().lower()
@@ -129,9 +144,7 @@ class BallisticsPage(QWidget):
         for record in self.records:
             if addon and record['addonGuid'] != addon:
                 continue
-            if kind is None and record['kind'] not in ('weapon', 'vehicle', 'ammunition'):
-                continue
-            if kind not in (None, 'all') and kind != record['kind']:
+            if not matches_asset(record, kind):
                 continue
             if query and query not in (record['path']+' '+record['addon']).lower():
                 continue
@@ -171,14 +184,7 @@ class BallisticsPage(QWidget):
         try:
             if event.get('ballisticsCatalog'):
                 self.records = json.loads(Path(event['ballisticsCatalog']).read_text(encoding='utf8'))
-                self.addon.blockSignals(True)
-                self.addon.clear()
-                self.addon.addItem('All addons', None)
-                groups = sorted({(r['addon'], r['addonGuid']) for r in self.records if r['addonGuid']})
-                for label, guid in groups:
-                    self.addon.addItem(label, guid)
-                self.addon.blockSignals(False)
-                self.fill()
+                self.refresh_addons()
                 self.win.go('ballistics')
             if event.get('ballisticsInspection'):
                 self.inspected = json.loads(Path(event['ballisticsInspection']).read_text(encoding='utf8'))

@@ -203,7 +203,7 @@ The **Ballistics** GUI page uses `rmtgui/ballistics.py` and the worker CLI `cust
 `rmtlib/ballistics.py` indexes installed addon prefabs, follows GUID references/inheritance, reports source physics,
 loads selected addon dependencies and records direct projectile flights through the existing game test entity.
 It writes separate datasets with provenance and resume signatures; it does not measure complete vehicle firing
-or install custom tables into the website. Legacy Labs weapon lists are unchanged. See [custom-ballistics.md](custom-ballistics.md)
+or install custom tables into the website. Labs uses explicit baseline/mod selections; standalone scripts retain their baseline presets. See [custom-ballistics.md](custom-ballistics.md)
 for workflow, file contracts, static-reader limits and the unverified live-mod engine boundary.
 
 Ballistics resource indexing streams archive directory chunks instead of reading entire paks. Reference traversal
@@ -248,3 +248,44 @@ Embedded browser constants are generated as reviewable JSON/SVG/JS recipes. New 
 selector/schema integration; producing a package does not automatically register it in the website.
 `test_sights.py` and `test_webdata.py` cover these contracts. Packaged builds must bundle `recipes/` and all root
 worker CLIs. See [changes-redo.md](changes-redo.md) before moving or replacing the checkout.
+
+
+## World and asset selection update
+
+World's default list now requires `GenericTerrainEntity` evidence in a bounded 512 KiB world header read;
+compiled and text resources are supported. Test/editor/image scenes, inherited scenarios and unknown sources
+are available through **Advanced: scenarios, test and unknown worlds**, with type/reason labels. The addon title
+and `.ent` extension do not establish that it is an independent terrain. Unusual terrains whose declaration
+is outside the inspected header may require Advanced selection and Workbench inspection.
+
+Ballistics: scan once, choose **Weapons**, **Vehicles**, **Bullets / calibres**, **Mortars / shells**,
+**Rockets / missiles** or **All ammunition**, then choose an installed addon from **All related addons**.
+Addon counts reflect resources in that category; unrelated addon names disappear. Inspect the selected resource
+and select the actual projectile/coefficient before recording. Classification uses resource path conventions,
+so **All resources (advanced)** remains available for unusual mod layouts. Ammo-named characters, sound configs
+and ordinary weapon attachment configs are excluded from normal weapon/ammo lists. Custom mortar shell selection
+records projectile flights; Website data's native mortar-table generator currently covers the vanilla mortars.
+`test_asset_selection.py` verifies the new classification and category contracts.
+
+
+## Labs selection contract (current)
+
+Read [labs-selection.md](labs-selection.md) before changing Labs. `rmtgui/labtargets.py` owns the category
+checklists, addon/search filters, saved requests and resolved-projectile picker. `rmtgui/labs.py` describes
+commands and routes all GUI categories through `labtest.py`. `rmtlib/labselection.py` catalogs installed
+resources, resolves targets/dependencies/physics, hashes source identity and supplies the selected Runner.
+`labtest.py` dispatches each category, configures legacy planners in an isolated worker process and keeps
+measured outputs under a selection signature. Do not mutate module globals in the GUI process.
+
+A request contains `tool`, nonempty unique `targets`, and optionally `projectiles`, `coefficient`,
+`mortarWeapon`, `dataset`, `launchAngleDegrees`, `soundLevelLUFS` or `soldier`. A prepared recipe adds `items`,
+`sourceHashes`, `guids`, `addonDirs`, `gameBuild`, `datasetHash` where applicable, and `signature`.
+Direct ammo selection resolves the root projectile only. Inherited sources are merged, not treated as extra
+rounds. Explicit weapon/vehicle inspection exposes pairings for the user's second selection.
+
+Engine status must be done with completed shots and no skips. Launcher CSV appends `expectedProjectile`;
+`RMT_LauncherTest.c` fails if another carried ammo prefab fires. Flight scoring requires all wind blocks
+and every planned shot. Reports read saved physics; resume additionally verifies current source hashes.
+Self-tests bypass Steam discovery. WAV and Pak targets are scoped to selected installed addons.
+`test_lab_selection.py` validates these contracts; `test_asset_selection.py` covers resource classification.
+See the redo checklist for source recovery and verified game smoke-test limits.

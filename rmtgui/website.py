@@ -13,8 +13,8 @@ class WebsiteDataPage(QWidget):
         super().__init__(); self.win = win; self.output = None
         layout = QVBoxLayout(self)
         title = QLabel('All website data'); title.setStyleSheet('font-size:22px;font-weight:bold'); layout.addWidget(title)
-        note = QLabel('The producers for arma-mapâ€™s game data live here. Map jobs are on Data, flight/sound measurements on Labs,\n'
-                      'custom ammunition on Ballistics, and artwork/calibration on Sights. Audit checks the websiteâ€™s current static/data files.\n'
+        note = QLabel('The producers for arma-map’s game data live here. Map jobs are on Data, flight/sound measurements on Labs,\n'
+                      'custom ammunition on Ballistics, and artwork/calibration on Sights. Audit checks the website’s current static/data files.\n'
                       'Select the application folder containing server.py on Data; production rooms and caches are runtime state.')
         note.setWordWrap(True); layout.addWidget(note)
         self.tree = QTreeWidget(); self.tree.setHeaderLabels(['Website input', 'Producer', 'Run from / inventory']); self.tree.setMinimumHeight(360)
@@ -30,7 +30,7 @@ class WebsiteDataPage(QWidget):
         layout.addLayout(row)
         self.action = QComboBox()
         for label, key in [('Mortar reference tables + shell physics (Workbench)', 'mortar'), ('Mortar plan + physics only', 'mortar-plan'),
-                           ('Blast summary â†’ website radii', 'blast'), ('Muzzle study â†’ mortar dispersion constants', 'barrel'),
+                           ('Blast summary → website radii', 'blast'), ('Muzzle study → mortar dispersion constants', 'barrel'),
                            ('Construction registry membership (read only)', 'construction'),
                            ('Export curated website recipes + legacy sight sketches', 'recipes')]:
             self.action.addItem(label, key)
@@ -84,7 +84,7 @@ class WebsiteDataPage(QWidget):
         if action == 'mortar':
             if self.win.setup.blocking():
                 QMessageBox.warning(self, 'Mortar tables', 'Resolve the Setup problems and close Workbench/the game first.'); return
-            if QMessageBox.question(self, 'Mortar tables', 'Launch Workbench to look up the gameâ€™s mortar firing tables?') != QMessageBox.StandardButton.Yes:
+            if QMessageBox.question(self, 'Mortar tables', 'Launch Workbench to look up the game’s mortar firing tables?') != QMessageBox.StandardButton.Yes:
                 return
         wb = self.win.setup.workbench()
         if wb:
@@ -104,7 +104,7 @@ class WebsiteDataPage(QWidget):
             if event.get('websiteAudit'):
                 report = json.loads(Path(event['websiteAudit']).read_text(encoding='utf8')); self.tree.clear()
                 for row in report['inputs']:
-                    self.tree.addTopLevelItem(QTreeWidgetItem([row['name'], row['producer'], f'{row["files"]} files / {row["bytes"]/1e6:.1f} MB Â· {row["gui"]}']))
+                    self.tree.addTopLevelItem(QTreeWidgetItem([row['name'], row['producer'], f'{row["files"]} files / {row["bytes"]/1e6:.1f} MB · {row["gui"]}']))
                 self.add_embedded_rows(); self.size_columns()
                 self.status.setText('Unknown inputs: '+(', '.join(report['unknown']) or 'none')+'\nAudit checks coverage; rerun measurements to establish freshness.')
                 self.win.go('website')

@@ -44,27 +44,35 @@ Windows only, like the rest of the tools. Steam must be running; Workbench and t
 | **Data** | What to make, in plain terms (`rmtlib/products.py`): roads, terrain/objects/line of sight, place names, satellite imagery, trees and foliage, the accuracy check. Three buttons tick a set in one go: *Field map data* (what the field map shows, installed into it), *Full map export* (everything, satellite included, installed into the field map) and *Clear*. What each needs is added on its own and shown. *Quick test* runs 2 chunks per job. The **output folder** is where manifests and site data go. *Also install into the field map* runs `rmt.py fieldmap` at the end (folder holding `server.py`, and the map's id on the site). *Advanced*: chunk size, stall timeout, launches per job, and `--set` job settings. |
 | **Run** | The plan as a step list, each step's state and progress from the engine's heartbeat (chunks, shots, plants, with a rough time left), the full log, elapsed time, **Cancel**, **Open output folder**, **Save log**. |
 | **Past runs** | Every export in the output folder: world, game build, which jobs finished, what is baked. *Open folder*, *Open raw export*, *Bake again* (the parts its finished jobs allow), *Install into field map*. |
-| **Labs** | The standalone tools, each command with a form for its options (see below). Shows the same command for a terminal, says whether it starts the game, and runs it on the Run page (log, progress, Cancel). *Read the docs*, *Open results folder*, and for the rocket and bullet tests *Copy rockets.json* / *bullets.json into the field map*. |
+| **Website data** | Website input audit, native mortar tables/physics, blast/barrel conversion, construction registries and curated recipes; links all producer workflows. |
+| **Ballistics** | Mod weapon/vehicle/ammunition inspection, dependency-scoped source physics and custom projectile recording. |
+| **Sights** | Extract inherited weapon/vehicle/optic reticles, calibrate aim/bore/range marks, export portable sketches and metadata. |
+| **Labs** | The standalone tools, each command with a form for its options (see below). Shows the same command for a terminal, says whether it starts the game, and runs it on the Run page (log, progress, Cancel). *Read the docs*, *Open results folder*, target checkboxes, addon filters, saved recipes and isolated measured outputs. |
 
 ### Labs
 
-| Tool | Commands | Starts the game |
-|---|---|---|
-| Mortar fire test (`firetest.py`) | run the full test, report on a run, write the plan, group, gun, barrel | run (~25 min), group and gun (unless given a run folder to report on), barrel (~1 h) |
-| Mortar blast test (`blasttest.py`) | run (shells as checkboxes, first N trials, run folder), report, plan | run (~20 min) |
-| Rocket flight test (`rockettest.py`, `rocketfit.py`) | fly the rockets (fifteen winds and the still-air twin run), fit and write `out/rockets.json`, check the site's answers, check the wind's part with still-air twins, report on either, write the plans | run (~80 min), check (~50 min), twins (~50 min) |
-| Bullet flight test (`bullettest.py`) | fly the rounds, write `out/bullets.json`, check the site's answers, check the wind's part with still-air twins, report on either, write the plans | run (~15 min), check (~30 min), twins (~30 min) |
-| Rocket launcher test (`launchertest.py`) | run, report on a run, write the plan | run (~30 min) |
-| Gunshot audibility (`audible/`) | 1. measure the samples, 2. make the result table, reach by gun class, loudness of game sounds | never |
-| Game files (`python -m rmtlib.pak`) | find files, show a file | never |
-| Self-test | `python -m unittest discover -p test_*.py` | never |
+Every category has a target checklist, addon filter, search and save/load controls. Press **Scan installed
+ targets** to include downloaded mods, tick the resources, then choose the command. Weapon/vehicle inspection
+opens a second checklist for resolved ammunition pairings. An empty selection cannot launch a test.
+See [labs-selection.md](labs-selection.md) for the complete selection, measurement and saved-run workflow.
 
-The tests' *Field map data* option (`--site`) is filled in from the Data page's field map folder (`static\data` under
-it). A command that starts the game first checks that Steam is running and the game is closed, and asks before
-starting. The tools are described as data in `rmtgui/labs.py` (`TOOLS`); a new script or command is a new entry there.
-Progress for the game tests comes from their heartbeat: `fire|setup|aims=N` and `fire|aim|..|left=K` (fire and rocket
-tests), `blast|setup|trials=N` and `blast|trial|..|left=K`, and a count of `gun|landed` / `gun|lost` rounds (and
-`launcher|fired` / `launcher|lost` for the launcher test).
+| Category | Selection |
+|---|---|
+| Mortar fire/group/gun/barrel | Mortar and shell pairings; baseline or installed mods |
+| Blast | Explosive ammunition |
+| Bullet flight/check/twins | Round/barrel pairings or installed weapon/vehicle ammunition |
+| Rocket flight/check/twins | Rocket/missile projectiles |
+| Launcher | Launcher weapon and one ammunition variant, with matching measured flight data |
+| Conflict | Installed terrains or Conflict scenarios |
+| Audibility | Installed WAV samples and calibrated reference level |
+| Game files | Addon packages, scoped find/show |
+| Self-test | Regression modules; no game required |
+
+Plans and measurements are stored under the output folder's `labs/<category>/<signature>` and the
+engine profile's corresponding signature folder. The old fixed-suite timing estimates are omitted because
+runtime depends on the selected targets. Mortar planning can launch Workbench to obtain native tables.
+Live commands check Steam and running game processes before launch; progress appears on the Run page.
+The command preview shows the exact selected `labtest.py` invocation.
 
 Settings (last world, products, folders) are kept between sessions (`QSettings`, in the registry under
 `HKCU\Software\ReforgerMapTools`).
@@ -87,7 +95,7 @@ Workbench / the game   (heartbeat RMT| lines in console.log -> progress events)
 - `rmt.py --events` prints JSON lines (`rmtlib/events.py`): `plan`, `step`, `progress`, `log`, `error`, `result`,
   `done`. Without `--events` the command line prints exactly what it did before.
 - A Labs command runs as `rmt_gui.py [--stderr-info] --script <file.py> <args>` (or `--module <name>`): the script
-  runs as `__main__` in its own folder (the audible scripts read and write files there), with its prints turned into
+  runs as `__main__` in its own folder; selected Labs writes isolated outputs through `labtest.py`, with its prints turned into
   the same JSON lines and an `error` and `done` event at the end. The packaged app will use the same switch.
 - The worker is `python.exe` beside the window's `pythonw.exe`; Qt starts it without a console window, and the
   `tasklist`/`taskkill` calls pass `CREATE_NO_WINDOW`, so nothing flashes up.
@@ -148,7 +156,7 @@ The **Ballistics** GUI page uses `rmtgui/ballistics.py` and the worker CLI `cust
 `rmtlib/ballistics.py` indexes installed addon prefabs, follows GUID references/inheritance, reports source physics,
 loads selected addon dependencies and records direct projectile flights through the existing game test entity.
 It writes separate datasets with provenance and resume signatures; it does not measure complete vehicle firing
-or install custom tables into the website. Legacy Labs weapon lists are unchanged. See [custom-ballistics.md](custom-ballistics.md)
+or install custom tables into the website. Labs now supports its own explicit baseline/mod selections; see [labs-selection.md](labs-selection.md). See [custom-ballistics.md](custom-ballistics.md)
 for workflow, file contracts, static-reader limits and the unverified live-mod engine boundary.
 
 
@@ -168,3 +176,21 @@ All three new pages run worker CLIs through the same QProcess event/cancel mecha
 updating source to load them. These pages were checked in an offscreen Qt window; mod data inspection and native
 mortar-table generation were also exercised separately. Full live flights for arbitrary mod ammunition remain
 unverified. Building the packaged release is a separate verification step.
+
+
+## World and asset selection update
+
+World's default list now requires `GenericTerrainEntity` evidence in a bounded 512 KiB world header read;
+compiled and text resources are supported. Test/editor/image scenes, inherited scenarios and unknown sources
+are available through **Advanced: scenarios, test and unknown worlds**, with type/reason labels. The addon title
+and `.ent` extension do not establish that it is an independent terrain. Unusual terrains whose declaration
+is outside the inspected header may require Advanced selection and Workbench inspection.
+
+Ballistics: scan once, choose **Weapons**, **Vehicles**, **Bullets / calibres**, **Mortars / shells**,
+**Rockets / missiles** or **All ammunition**, then choose an installed addon from **All related addons**.
+Addon counts reflect resources in that category; unrelated addon names disappear. Inspect the selected resource
+and select the actual projectile/coefficient before recording. Classification uses resource path conventions,
+so **All resources (advanced)** remains available for unusual mod layouts. Ammo-named characters, sound configs
+and ordinary weapon attachment configs are excluded from normal weapon/ammo lists. Custom mortar shell selection
+records projectile flights; Website data's native mortar-table generator currently covers the vanilla mortars.
+`test_asset_selection.py` verifies the new classification and category contracts.

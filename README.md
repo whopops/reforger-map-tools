@@ -34,6 +34,7 @@ projectile flight recording. See [docs/custom-ballistics.md](docs/custom-ballist
 | [docs/changes-redo.md](docs/changes-redo.md) | Reapply the complete changes after replacing the checkout |
 | [docs/code-guide.md](docs/code-guide.md) | Quick code understanding for AI models and contributors; where to make changes and how to verify them |
 | [docs/gui.md](docs/gui.md) | The desktop app (`Reforger Map Tools.bat`, `rmt_gui.py`): starting it, its pages (Labs runs the other tools), how it drives `rmt.py`, what is tested and what isn't |
+| [docs/labs-selection.md](docs/labs-selection.md) | Select baseline/mod targets for every Labs category; inspect ammunition pairings, save recipes and reproduce isolated measurements |
 | [docs/export-jobs.md](docs/export-jobs.md) | `rmt.py export`: every job, its settings, its raw output files, how retries and resume work |
 | [docs/bakers.md](docs/bakers.md) | `rmt.py bake`: every baker, its inputs, its output files and their binary layouts; then `rmt.py check` (scoring the line of sight) and `rmt.py fieldmap` (into the website, 2D and 3D) |
 | [docs/satellite-and-foliage.md](docs/satellite-and-foliage.md) | The two jobs that run in the game itself: how they work, how to tune them |
@@ -158,7 +159,7 @@ baking; foliage capture needs exported entities. In a bake, `plants` needs `los`
 | `rmt.py` | The command line. Parses arguments; `bake`, `check`, `fieldmap`, `run` and `detect` logic. |
 | `Reforger Map Tools.bat` | Double-click launcher for the desktop app: makes `.venv\`, installs `requirements.txt`, opens the window |
 | `rmt_gui.py`, `rmtgui/` | The desktop app ([docs/gui.md](docs/gui.md)): `app.py` the window, `worker.py` the child process, `labs.py` the Labs page's tools and commands, `theme.py` the look (dark, the field map's yellow), `icon.ico`; `requirements.txt` lists what it and the bakers need |
-| `test_*.py` | Regression tests: `python -m unittest discover -p "test_*.py"` (or Labs â†’ Self-test) |
+| `test_*.py` | Regression tests: `python -m unittest discover -p "test_*.py"` (or Labs → Self-test) |
 | `rmtlib/export.py` | `export` and `worlds`: world resolution, retries, manifest, satellite grid |
 | `rmtlib/addons.py` | Every installed addon and its worlds, from their resource databases; a world's mod dependencies |
 | `rmtlib/products.py` | What you ask for (roads, line of sight, ...) as export jobs and bake parts |

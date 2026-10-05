@@ -46,6 +46,7 @@ class RMT_LauncherTestEntity : GenericEntity
 	protected float m_fStep;
 	protected int m_iDone;
 	protected int m_iLost;
+	protected bool m_bSelectionFailed; // expected projectile identity from optional plan column
 
 	protected BaseWeatherManagerEntity m_Weather;
 	protected float m_fWindS = -1;
@@ -264,6 +265,16 @@ class RMT_LauncherTestEntity : GenericEntity
 	{
 		if (projectileEntity && !m_Fired)
 		{
+			array<string> row = m_aPlan[m_iRow];
+			if (row.Count() > 12 && row[12] != "")
+			{
+				EntityPrefabData pd = projectileEntity.GetPrefabData();
+				if (!pd || pd.GetPrefabName() != row[12])
+				{
+					m_bSelectionFailed = true;
+					Say("launcher|error|fired ammunition does not match selected projectile " + row[12]);
+				}
+			}
 			m_Fired = projectileEntity;
 			m_fFiredAt = m_fTimer;
 		}
@@ -421,7 +432,10 @@ class RMT_LauncherTestEntity : GenericEntity
 		FileHandle f = FileIO.OpenFile(outDir + "/launchertest.status.json", FileMode.WRITE);
 		if (f)
 		{
-			f.WriteLine(string.Format("{\"job\": \"launchertest\", \"result\": \"done\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_iDone, m_iLost, m_iDone));
+			string result = "done";
+			if (m_bSelectionFailed)
+				result = "failed";
+			f.WriteLine(string.Format("{\"job\": \"launchertest\", \"result\": \"%4\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_iDone, m_iLost, m_iDone, result));
 			f.Close();
 		}
 		GetGame().RequestClose();

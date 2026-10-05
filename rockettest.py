@@ -110,7 +110,8 @@ def done(block, rel=OUT_REL):
     """Whether this wind's run finished (the game writes its status file only when every rocket is down)."""
     st = os.path.join(os.path.dirname(game_dir(block, rel)), 'firetest.status.json')
     try:
-        return json.load(open(st)).get('result') == 'done'
+        status = json.load(open(st))
+        return status.get('result') == 'done' and status.get('made', 0) > 0 and status.get('skipped', 0) == 0
     except (OSError, ValueError):
         return False
 
@@ -132,14 +133,14 @@ def run(rows=None, rel=OUT_REL, tries=3, args=('-rmtFireGap=1',)):
     """One game run per wind, so a game that hangs costs one wind, not the lot; winds already done are skipped.
     (The game holds its output files open for the whole run, so a run killed part way leaves nothing.)"""
     from rmtlib.steam import Install
-    from rmtlib.workbench import Runner
+    from rmtlib.labselection import runner as lab_runner
     for i, block in enumerate(blocks(rows or make_plan())):
         w = (block[0]['wspeed'], block[0]['wfrom'])
         for _ in range(tries):
             if done(i, rel):
                 break
             write_plan(block, i, rel)
-            code, lines, status = Runner(Install(None)).run_game('firetest', f'{rel}/w{i}', firetest.WORLD,
+            code, lines, status = lab_runner(Install(None)).run_game('firetest', f'{rel}/w{i}', firetest.WORLD,
                                                                  flag='-rmtFire', args=tuple(args),
                                                                  stall=240, limit=1800)
             print(f'wind {w}: exit', code, 'status', status)
@@ -188,6 +189,7 @@ def check_plan(seed=11):
         # windParts for a shot due north: along + = tailwind, and the crosswind from the right
         w = (-ws * math.cos(math.radians(wf)), ws * math.sin(math.radians(wf)))
         for name, path in ROCKETS.items():
+            path, coef = path if isinstance(path, tuple) else (path, 1)
             R = rocketfit.prepare(J['rockets'][name])
             reach = R['reach']
             n = 0
@@ -197,7 +199,7 @@ def check_plan(seed=11):
                 if not s:
                     continue
                 e, side, t = s
-                rows.append({'id': f'T{len(rows):03d}', 'rocket': name, 'prefab': prefab_name(path), 'elev': e,
+                rows.append({'id': f'T{len(rows):03d}', 'rocket': name, 'prefab': prefab_name(path), 'coef': coef, 'elev': e,
                              'az': -math.degrees(math.atan2(side, D)), 'wspeed': ws, 'wfrom': wf, 'D': D, 'H': H, 'tof': t})
                 n += 1
     for r, (x, z) in zip(rows, sea_spots(len(rows), seed=seed)):

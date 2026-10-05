@@ -42,3 +42,21 @@ selector and explicit calibration verification keep those boundaries visible.
 
 For a reproducible local review, run the two **Scan** buttons again after downloads finish. Reports in the chosen
 output folder retain source references and warnings; no game assets or mod files are modified by scanning/extraction.
+
+
+## World and asset selection update
+
+World's default list now requires `GenericTerrainEntity` evidence in a bounded 512 KiB world header read;
+compiled and text resources are supported. Test/editor/image scenes, inherited scenarios and unknown sources
+are available through **Advanced: scenarios, test and unknown worlds**, with type/reason labels. The addon title
+and `.ent` extension do not establish that it is an independent terrain. Unusual terrains whose declaration
+is outside the inspected header may require Advanced selection and Workbench inspection.
+
+Ballistics: scan once, choose **Weapons**, **Vehicles**, **Bullets / calibres**, **Mortars / shells**,
+**Rockets / missiles** or **All ammunition**, then choose an installed addon from **All related addons**.
+Addon counts reflect resources in that category; unrelated addon names disappear. Inspect the selected resource
+and select the actual projectile/coefficient before recording. Classification uses resource path conventions,
+so **All resources (advanced)** remains available for unusual mod layouts. Ammo-named characters, sound configs
+and ordinary weapon attachment configs are excluded from normal weapon/ammo lists. Custom mortar shell selection
+records projectile flights; Website data's native mortar-table generator currently covers the vanilla mortars.
+`test_asset_selection.py` verifies the new classification and category contracts.

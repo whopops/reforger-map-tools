@@ -48,6 +48,34 @@ def archive_entries(path):
             f.seek(size, 1)
 
 
+def asset_kind(path):
+    low = path.replace('\\', '/').lower()
+    if not low.startswith(('prefabs/', 'configs/')):
+        return 'other'
+    if low.startswith(('prefabs/weapons/core/ammo_', 'prefabs/ammo/', 'prefabs/ammunition/', 'prefabs/weapons/ammo/', 'configs/weapons/ammo/')):
+        return 'ammunition'
+    if low.startswith('prefabs/weapons/') and ('/optics/' in low or '/scopes/' in low):
+        return 'optic'
+    if low.startswith('prefabs/vehicles/'):
+        return 'vehicle'
+    if low.startswith('prefabs/weapons/') and '/attachments/' not in low and '/magazines/' not in low and low.endswith('.et'):
+        return 'weapon'
+    return 'other'
+
+
+def matches_asset(record, category):
+    kind, low = record['kind'], record['path'].lower()
+    if category == 'all': return True
+    if category is None: return kind in ('weapon', 'ammunition', 'vehicle')
+    if category == 'mortars':
+        return kind in ('weapon', 'ammunition') and ('mortar' in low or re.search(r'shell_(?:81|82|60|120)mm', low) is not None)
+    if category == 'bullets':
+        return kind == 'ammunition' and ('/bullets/' in low or 'bullet_' in low or re.search(r'/ammo_[0-9]+x[0-9]+', low) is not None)
+    if category == 'rockets':
+        return kind == 'ammunition' and ('rocket' in low or '/missiles/' in low)
+    return kind == category
+
+
 class Catalog:
     def __init__(self, install, selected=None):
         self.install = install
@@ -81,10 +109,7 @@ class Catalog:
             for path in sorted(set(sources) | set(guid_paths)):
                 ref = '{%s}%s' % (guid_paths[path], path) if path in guid_paths else path
                 low = path.lower()
-                kind = ('ammunition' if '/ammo/' in low or '/ammunition/' in low or 'ammo_' in low
-                        else 'optic' if '/optics/' in low or '/scopes/' in low
-                        else 'vehicle' if '/vehicles/' in low
-                        else 'weapon' if '/weapons/' in low else 'other')
+                kind = asset_kind(path)
                 record = {'resource': ref, 'path': path, 'addon': a.title, 'addonGuid': a.guid,
                           'source': a.source, 'kind': kind, 'storage': sources.get(path)}
                 self.records.append(record)
@@ -174,7 +199,10 @@ class Catalog:
                 if details['projectile']:
                     candidates.append(details)
                 if depth < 8:
-                    refs = {r for ancestor in self.chain(item, first['addonGuid']) for r in REFS.findall(self.text(ancestor))}
+                    refs = set()
+                    for ancestor in self.chain(item, first['addonGuid']):
+                        text = self.text(ancestor); parent = PARENT.match(text)
+                        refs.update(r for r in REFS.findall(text) if not parent or r != parent[1])
                     for linked in sorted(refs):
                         try:
                             todo.append((self.resolve(linked, context=first['addonGuid']), depth+1))
