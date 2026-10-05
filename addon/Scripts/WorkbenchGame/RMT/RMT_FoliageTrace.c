@@ -4,6 +4,11 @@
 // writes the share of rays that stop on the plant itself (or a part of it) for each setting and height band.
 //   foliagetrace/rays.csv  prefab,kind,height,band,config,rays,hits
 // Compare with the photo-measured cover of the same kinds (everon-data/foliage/foliage_profiles.json).
+// RESEARCH ONLY, not in the pipeline and not in any user-facing job list (rmt.py runs it only when named with --jobs).
+// Its answer is in: leaves are not in the collision data, so rays stop on about 18% of a plant's box, correlation 0.37
+// against the photographs. Do not add more ray settings. Known flaws, left as they are: the search rings are nested
+// boxes and plants have no id, so a plant is measured again on every larger ring, and the per-kind cap counts visits,
+// not plants.
 class RMT_FoliageTraceJob
 {
 	protected RMT_Context m_Ctx;

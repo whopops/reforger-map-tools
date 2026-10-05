@@ -202,7 +202,7 @@ def score(d):
     res = collections.defaultdict(list)
     for s in shots:
         p = plan[s['id']]
-        if p['kind'] != 'fire' or float(s['tof']) < 0:
+        if p['kind'] != 'fire' or float(s['tof']) < 0 or s.get('end') in ('in_air', 'lost'):
             continue
         fr = trajs.get((s['id'], s['round']))
         if not fr:

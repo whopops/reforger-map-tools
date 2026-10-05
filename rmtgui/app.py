@@ -694,8 +694,8 @@ def _esc(text):
 
 # ------------------------------------------------------------------------------------------------ Runs
 def job_ok(m, job):
-    st = (m.get("jobs", {}).get(job) or {}).get("status") or {}
-    return st.get("result") in ("done", "partial")
+    from rmtlib.workbench import succeeded
+    return succeeded((m.get("jobs", {}).get(job) or {}).get("status"))
 
 
 def bakeable(m):

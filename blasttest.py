@@ -193,6 +193,10 @@ def score(d):
     bursts = {r['id']: r for r in csv.DictReader(open(os.path.join(d, 'bursts.csv'), newline=''))}
     hits = list(csv.DictReader(open(os.path.join(d, 'hits.csv'), newline='')))
     print(f'{len(bursts)} trials, {len(hits)} soldiers ({d})')
+    air = [i for i, b in bursts.items() if b.get('end') == 'in_air']
+    if air:
+        # its last known point stands in for the burst; the game did not show where it went off
+        print(f'{len(air)} burst(s) did not reach the ground in the last frame (end=in_air): {", ".join(air[:10])}')
     off = [math.hypot(float(b['x']) - plan[i]['x'], float(b['z']) - plan[i]['z']) for i, b in bursts.items()]
     print(f'bursts: a median {statistics.median(off):.2f} m from the aim point, {float(max(off)):.1f} m at most; '
           f'height above the ground median {statistics.median(float(b["y"]) - float(b["ground"]) for b in bursts.values()):+.2f} m')

@@ -3,14 +3,19 @@
 // frame event moves a camera to each spot, preloads it, waits, takes a BMP screenshot over a few frames, and at the
 // end asks the game to close. It never blocks the engine, so every frame is really drawn.
 //
-// RMT_ExportPlugin (job "satellite") places this entity and a CameraBase named "RMT_Camera" in the world (never
-// saved) and switches Workbench to game mode. The settings come from the command line:
-//   -rmtOut=$profile:...        run folder; pictures go to <out>/satellite/<name>.bmp (+ .txt)
+// It runs only in the real game: rmt.py starts it with -rmtSat 1 and RMT_GameHook spawns this entity once the world
+// is loaded (command-line Workbench does not draw, so its screenshots are black). The settings come from the command
+// line:
+//   -rmtOut=$profile:...        run folder; pictures go to <out>/satellite/<name>.bmp (+ .txt, written only once the
+//                               picture is on disk and not empty; it is also the resume marker)
 //   -rmtSatCenters=x,z;x,z      spots (tests), or -rmtSatGrid=x0,z0,cols,rows,step for a whole grid
-//   -rmtSatSpan=<m>             ground metres across the picture's height (orthographic)
+//   -rmtSatSpan=<m>             ground metres across the picture's height
+//   -rmtSatFov=<deg>            the lens (perspective, the default and the only mode that works)
+//   -rmtSatMode=0               orthographic: BROKEN, renders black in this engine build; kept only for testing it
 //   -rmtSatHeight=<m>           camera height
 //   -rmtSatWait=<s>             settle time after preload, default 1.5
-// When done it writes <out>/satellite.status.json; rmt.py then closes Workbench.
+// Noon and a clear sky are asked for first, and no picture is taken until the weather manager reports both.
+// When done it writes <out>/satellite.status.json (RMT_Status) and asks the game to close.
 
 class RMT_SatCaptureEntityClass : GenericEntityClass
 {
@@ -36,6 +41,12 @@ class RMT_SatCaptureEntity : GenericEntity
 	protected int m_iMode;       // 1 perspective (default); 0 orthographic renders black in this engine build
 	protected float m_fFov;      // vertical field of view, degrees
 	protected int m_iBaseline;   // test: 0 not yet, 1 shot requested, 2 done
+	protected int m_iFailed;     // pictures that never reached the disk
+	protected int m_iMade;
+	protected string m_sFailReason;
+	protected bool m_bWeatherOk; // noon and clear sky have taken effect
+	protected BaseWeatherManagerEntity m_Weather;
+	protected vector m_vCamPos;  // where the camera was put for the current shot
 
 	//------------------------------------------------------------------------------------------------
 	protected static void Say(string msg)
@@ -73,6 +84,11 @@ class RMT_SatCaptureEntity : GenericEntity
 		{
 			array<string> g = {};
 			grid.Split(",", g, true);
+			if (g.Count() < 5)
+			{
+				m_sFailReason = "-rmtSatGrid needs x0,z0,cols,rows,step: " + grid;
+				return;
+			}
 			float x0 = g[0].ToFloat();
 			float z0 = g[1].ToFloat();
 			int cols = g[2].ToInt();
@@ -114,13 +130,15 @@ class RMT_SatCaptureEntity : GenericEntity
 	protected void SetNoon()
 	{
 		BaseWeatherManagerEntity weather = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(GetWorld()));
+		m_Weather = weather;
 		if (!weather)
 		{
 			Say("sat|no weather manager (lighting as the world has it)");
+			m_bWeatherOk = true;
 			return;
 		}
 		weather.SetDate(1989, 6, 21, true);
-		weather.SetTimeOfTheDay(12.0);
+		weather.SetTimeOfTheDay(12.0, true);
 		BaseWeatherStateTransitionManager trans = weather.GetTransitionManager();
 		if (trans)
 		{
@@ -134,10 +152,32 @@ class RMT_SatCaptureEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// True once the asked-for noon and clear sky are what the weather manager reports.
+	protected bool WeatherReady()
+	{
+		if (m_bWeatherOk || !m_Weather)
+			return true;
+		bool noon = Math.AbsFloat(m_Weather.GetTimeOfTheDay() - 12.0) < 0.1;
+		bool clear = true;
+		BaseWeatherStateTransitionManager trans = m_Weather.GetTransitionManager();
+		if (trans && trans.GetCurrentState())
+			clear = trans.GetCurrentState().GetStateName() == "Clear";
+		m_bWeatherOk = noon && clear;
+		return m_bWeatherOk;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool Setup()
 	{
 		ReadPlan();
 		FileIO.MakeDirectory(m_sOut);
+		if (m_sFailReason != "")
+			return false;
+		if (m_aX.IsEmpty() && m_iSkipped == 0)
+		{
+			m_sFailReason = "nothing to photograph (no -rmtSatGrid or -rmtSatCenters)";
+			return false;
+		}
 		m_Camera = CameraBase.Cast(GetWorld().FindEntityByName("RMT_Camera"));
 		if (!m_Camera)
 		{
@@ -149,6 +189,8 @@ class RMT_SatCaptureEntity : GenericEntity
 		if (m_Camera && cm)
 			cm.SetCamera(m_Camera);
 		Say(string.Format("sat|setup|shots=%1|skipped=%2|camera=%3|manager=%4|span=%5", m_aX.Count(), m_iSkipped, m_Camera != null, cm != null, m_fSpan));
+		if (m_iMode == 0)
+			Say("warn|sat|orthographic mode is broken in this engine build (black pictures)");
 		SetNoon();
 		return true;
 	}
@@ -168,6 +210,7 @@ class RMT_SatCaptureEntity : GenericEntity
 		vector mat[4];
 		Math3D.AnglesToMatrix(Vector(0, -90, 0), mat); // yaw 0 (north up), pitch straight down
 		mat[3] = pos;
+		m_vCamPos = pos;
 		BaseWorld world = GetWorld();
 		int cam = CameraIndex();
 		if (m_Camera)
@@ -215,14 +258,28 @@ class RMT_SatCaptureEntity : GenericEntity
 	protected void Finish()
 	{
 		m_bDone = true;
-		Say(string.Format("sat|done|shots=%1", m_aX.Count()));
-		FileHandle f = FileIO.OpenFile(Param("rmtOut") + "/satellite.status.json", FileMode.WRITE);
-		if (f)
+		Say(string.Format("sat|done|shots=%1|made=%2|failed=%3", m_aX.Count(), m_iMade, m_iFailed));
+		string result = "done";
+		string reason = m_sFailReason;
+		if (reason != "" || m_iMade + m_iSkipped == 0)
 		{
-			f.WriteLine(string.Format("{\"job\": \"satellite\", \"result\": \"done\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_aX.Count(), m_iSkipped, m_aX.Count() + m_iSkipped));
-			f.Close();
+			result = "failed";
+			if (reason == "")
+				reason = "no picture reached the disk";
 		}
+		else if (m_iFailed > 0)
+		{
+			result = "partial";
+			reason = string.Format("%1 picture(s) never reached the disk; run again to retake them", m_iFailed);
+		}
+		RMT_Status.Write("satellite", result, m_iMade, m_iSkipped, m_iFailed, m_iMade + m_iSkipped, reason);
 		GetGame().RequestClose();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool PictureOnDisk(string stem)
+	{
+		return RMT_Status.FileSize(stem + ".bmp") > 0 || RMT_Status.FileSize(stem + ".png") > 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,16 +308,31 @@ class RMT_SatCaptureEntity : GenericEntity
 		}
 		if (!m_bReady)
 		{
-			m_bReady = Setup();
+			m_bReady = true;
+			if (!Setup())
+			{
+				Finish();
+				return;
+			}
 			Next();
 			return;
 		}
-		PlaceCamera(); // keep the camera where we want it, whatever else moves it
+		// the camera is placed once per shot (moving it every frame keeps the streamer from settling); put back only
+		// if something else moved it
+		if (m_Camera && vector.Distance(m_Camera.GetOrigin(), m_vCamPos) > 0.01)
+			PlaceCamera();
 		m_fTimer += timeSlice;
 		if (m_iPhase == 0)
 		{
 			if (!GetGame().IsPreloadFinished() && m_fTimer < 30)
 				return;
+			if (!WeatherReady())
+			{
+				if (m_fTimer < 120)
+					return;
+				Say("warn|sat|noon and clear sky not reported after 120 s; shooting anyway");
+				m_bWeatherOk = true;
+			}
 			m_iPhase = 1;
 			m_fTimer = 0;
 			return;
@@ -269,21 +341,30 @@ class RMT_SatCaptureEntity : GenericEntity
 		{
 			if (m_fTimer < m_fWait)
 				return;
-			System.MakeScreenshot(m_sOut + "/" + m_aName[m_iShot]); // the engine adds .png
+			System.MakeScreenshot(m_sOut + "/" + m_aName[m_iShot]);
 			m_iPhase = 2;
 			m_fTimer = 0;
 			return;
 		}
-		// the screenshot is written over several frames; the .txt (also the resume marker) comes after it
-		if (m_fTimer < 0.5)
+		// the screenshot is written over several frames; the .txt (also the resume marker) only once it is on disk
+		string stem = m_sOut + "/" + m_aName[m_iShot];
+		if (!PictureOnDisk(stem))
+		{
+			if (m_fTimer < 30)
+				return;
+			Say(string.Format("error|sat|picture not written|%1", m_aName[m_iShot]));
+			m_iFailed++;
+			Next();
 			return;
-		FileHandle f = FileIO.OpenFile(m_sOut + "/" + m_aName[m_iShot] + ".txt", FileMode.WRITE);
+		}
+		FileHandle f = FileIO.OpenFile(stem + ".txt", FileMode.WRITE);
 		if (f)
 		{
 			f.WriteLine("x,z,span,height,fov,mode");
 			f.WriteLine(string.Format("%1,%2,%3,%4,%5,%6", m_aX[m_iShot], m_aZ[m_iShot], m_fSpan, m_fHeight, m_fFov, m_iMode));
 			f.Close();
 		}
+		m_iMade++;
 		Say(string.Format("sat|shot|%1|left=%2", m_aName[m_iShot], m_aX.Count() - m_iShot - 1));
 		Next();
 	}

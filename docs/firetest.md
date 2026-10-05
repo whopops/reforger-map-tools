@@ -73,9 +73,23 @@ Keep `SHELLS`, `MUZZLE_H`, `SPEED_SD`, `BARREL` and `P90` at the top of `firetes
   above the sea instead of the muzzle on the ground (`rockettest.py` uses it)
 - `plan.json`: the same plus what the site's solver gave (weapon, shell, ring, distance, height difference, map
   azimuth, wind-from, time of flight, predicted spread, probe flag).
-- `shots.csv`: `id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z`
+- `shots.csv`: `id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z,end`.
+  `end` says what `x,y,z` is: `ground` (where it met the terrain: the last frame carried on along the last velocity for
+  at most 0.1 s), `in_air` (the round was removed too high to reach the ground in 0.1 s, an air burst or a deletion:
+  its last known point, not an impact), `cutoff` (still flying after `-rmtFireMaxT` s, any positive value, default 90:
+  where it was then; before, a flight over 90 s was dropped without a row). Only `ground` rows are impacts; the scorers
+  leave the rest out and say how many (`firetest.landed`).
 - `traj.csv` (`T` aims only): `id,round,t,x,y,z,vx,vy,vz`
-- `..\firetest.status.json`
+- `..\firetest.status.json` (`failed` with a `reason` when the plan is missing or empty or a file will not open)
+
+**Which muzzle speed is which.** The main test spawns the shell and sets its charge with
+`ProjectileMoveComponent.SetBulletCoef(coef)`; `gun` loads the shell into the real weapon after
+`SCR_MortarShellGadgetComponent.SetChargeRingConfig(i)`. The game's own script shows `SetChargeRingConfig` selects
+one configuration and calls `SetBulletCoef` with that configuration's coefficient, replacing the default (charge rings
+do not stack, and a fresh shell's default ring is overwritten by either call). So the two set the same coefficient; what
+differs is that `gun` fires through the weapon (its muzzle, its dispersion). The gun test is the source of truth for
+the speed a round leaves the tube with; treat the two files as the same reference only once they agree on one shell
+(compare `v0` of a `gun` round with a direct launch of the same shell and ring).
 
 Wind directions: the game's override takes the direction the wind blows **toward**; the in-game map shows that plus
 180 degrees, as "from". The plan stores `wind_from` (what a crew types into the site) and converts.
@@ -104,9 +118,12 @@ With a folder, they only report on it.
 
   It also reports how far each round left the barrel's direction (up/down and sideways, in mils), which is the
   barrel's dispersion measured directly. Output in `<game profile>\rmt\guntest\gun\`:
-  - `shots.csv`: `id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target`.
+  - `shots.csv`: `id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target,ring,coef,end`.
     `m` is the muzzle; `b` is the barrel's direction; `v0` is the round's velocity when first seen, `v0dt` s after it
-    was fired.
+    was fired; `ring`, `coef` the charge configuration read back from the shell after it was set (a shell without the
+    planned ring is not fired). `end`: `ground`, `in_air`, `lost` (still flying after 120 s: where it was then),
+    `launch` (track 0) or `lay_failed`: the barrel could not be laid within 0.003 degrees in 15 tries, so the round was
+    NOT fired (before, it was fired anyway and its lay error only showed in `lay_az`/`lay_el`).
   - `plan.csv`, `plan.json`, `..\guntest.status.json`.
   - `traj.csv`: every frame of every round followed down (`id,round,t,x,y,z,vx,vy,vz`).
 

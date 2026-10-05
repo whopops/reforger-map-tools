@@ -9,11 +9,20 @@ import re
 import time
 
 from . import addons, paths
-from .workbench import REPO, JobFailed, Workbench, read_status
+from .workbench import REPO, JobFailed, Workbench, read_status, succeeded
 
 JOBS = ["probe", "mapdata", "roads", "names", "entities", "terrain", "surface"]
-ALL_JOBS = JOBS + ["sightlines", "satellite", "foliage", "foliagetrace", "conflict", "ballistics", "mortar_tables"]
+ALL_JOBS = JOBS + ["sightlines", "satellite", "foliage", "conflict", "ballistics", "mortar_tables"]
+RESEARCH_JOBS = ["foliagetrace", "materials"]  # accepted by --jobs, never listed for users (RMT_FoliageTrace.c, RMT_MaterialsJob.c)
 CHUNK_JOBS = {"entities": "objects", "terrain": "terrain", "surface": "surface"}
+# What each Workbench job must leave behind (under the raw run folder) for its status to count as success.
+OUTPUTS = {
+    "probe": ["probe.json"], "mapdata": ["mapdata"], "roads": ["roads/roadentities.csv"],
+    "names": ["names/descriptors.csv"], "entities": ["objects"], "terrain": ["terrain"], "surface": ["surface"],
+    "sightlines": ["sightlines/check.csv"], "conflict": ["conflict/entities.csv"],
+    "ballistics": ["ballistics/sim.csv"], "mortar_tables": ["mortar_tables/tables.csv"],
+    "foliagetrace": ["foliagetrace/rays.csv"], "materials": ["materials/params.csv"],
+}
 
 
 def now():
@@ -123,7 +132,13 @@ class Exporter:
         self.log(f"world {resource}  ->  {raw}")
         jobs = [j for j in (jobs or JOBS)]
         wb_jobs = [j for j in jobs if j not in ("satellite", "foliage")]
-        ok = lambda st: bool(st) and st.get("result") in ("done", "partial")
+        game_run = os.path.join(self.install.game_profile, *out_rel.split("/"))
+        game_outputs = {"satellite": [os.path.join(game_run, "satellite")],
+                        "foliage": [os.path.join(game_run, "foliage", "shots.csv")]}
+
+        def ok(st, job=None):
+            outputs = game_outputs.get(job) or [os.path.join(raw, *p.split("/")) for p in OUTPUTS.get(job, ())]
+            return succeeded(st, outputs)
 
         def save():
             manifest["updated"] = now()
@@ -132,11 +147,14 @@ class Exporter:
 
         def record(job, status, seconds):
             manifest["jobs"][job] = {"finished": now(), "seconds": seconds, "status": status}
-            if job == "probe" and ok(status):
+            if job == "probe" and ok(status, job):
                 with open(os.path.join(raw, "probe.json"), encoding="utf8") as f:
                     manifest["probe"] = json.load(f)
-            if ok(status):
-                self.log(f"  [{job}] {status['result']}: {status.get('items')} items")
+            if ok(status, job):
+                self.log(f"  [{job}] {status['result']}: {status.get('items')} items"
+                         + (f" ({status['remaining']} remaining: {status.get('reason')})" if status["result"] == "partial" else ""))
+            elif status:
+                self.log(f"  [{job}] {status.get('result')}: {status.get('reason') or 'its output is missing or empty'}")
             save()
 
         # All Workbench jobs on one load of the world. After a crash or a stall, relaunch with the jobs that
@@ -159,9 +177,11 @@ class Exporter:
             still = []
             for job in remaining:
                 st = read_status(wb.status_path(out_rel, job))
-                if ok(st):
+                if ok(st, job):
                     record(job, st, seconds)
                 else:
+                    if st:
+                        self.log(f"  [{job}] {st.get('result')}: {st.get('reason') or 'its output is missing or empty'}")
                     still.append(job)
             if still:
                 self.log(f"  [workbench] attempt {attempt}: exit {code}; not finished: {', '.join(still)}")
@@ -185,11 +205,11 @@ class Exporter:
                     if "script error" in str(e):
                         break
                     continue
-                if ok(status):
+                if ok(status, "satellite"):
                     break
                 self.log(f"  [satellite] attempt {attempt}: exit {code}, status {status}")
             record("satellite", status, round(time.time() - t0))
-            if not ok(status):
+            if not ok(status, "satellite"):
                 failed.append("satellite")
                 self.log("  [satellite] FAILED")
 
@@ -199,7 +219,6 @@ class Exporter:
             from . import foliage
             t0 = time.time()
             given = {s.partition("=")[0]: s.partition("=")[2] for s in settings}
-            game_run = os.path.join(self.install.game_profile, *out_rel.split("/"))
             n = foliage.plant_list(raw, os.path.join(game_run, "foliage", "plants.csv"),
                                    int(given.get("FoliageLimit", 0)))
             empty, _, _ = self.resolve(given.get("FoliageWorld", "EmptyArland"))
@@ -233,13 +252,13 @@ class Exporter:
                     if "script error" in str(e):
                         break
                     continue
-                if ok(status):
+                if ok(status, "foliage"):
                     break
             stop.set()
             converter.join()
             foliage.bmp_to_png(photos, min_age=0)
             record("foliage", status, round(time.time() - t0))
-            if not ok(status):
+            if not ok(status, "foliage"):
                 failed.append("foliage")
                 self.log("  [foliage] FAILED")
         save()

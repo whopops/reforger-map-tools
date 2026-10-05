@@ -109,7 +109,7 @@ class RMT_RoadsJob
 		FileHandle fs = FileIO.OpenFile(folder + "/splines.csv", FileMode.WRITE);
 		if (!fr || !fb || !fs)
 		{
-			m_Ctx.WriteStatus("roads", "failed", 0, 0, 1, 0, 0);
+			m_Ctx.WriteStatus("roads", "failed", 0, 0, 1, 0, 0, "could not open the roads files in " + folder);
 			return 1;
 		}
 		fr.Write("road,which,material,width,type,point,x,y,z\n");
@@ -156,6 +156,13 @@ class RMT_RoadsJob
 		fb.Close();
 		fs.Close();
 		RMT_Context.Say(string.Format("roads|pieces=%1|points=%2|shapes=%3", roads, points, shapes));
+		if (roads == 0)
+		{
+			// never an empty success: a renamed road class would look exactly like this
+			string why = string.Format("no RoadEntity among %1 editor entities (and %2 road-generator shapes): the class may have been renamed, or the world has no roads", count, shapes);
+			m_Ctx.WriteStatus("roads", "failed", 0, 0, 1, 0, System.GetTickCount() - t0, why);
+			return 1;
+		}
 		m_Ctx.WriteStatus("roads", "done", 1, 0, 0, roads, System.GetTickCount() - t0);
 		return 0;
 	}
@@ -165,8 +172,8 @@ class RMT_RoadsJob
 // sightlines/check.csv: random sight lines fired by the engine itself, so the baked line of sight can be scored
 // against the game (`rmt.py check`, rmtlib/check_los.py). Port of the old Everon exporter's "Check: sight lines".
 // Observers crouch (eyes 1 m up) or, three times in ten, sit in a vehicle (2 m); targets stand (chest 1.5 m); 10 m
-// to 1 km apart, evenly spread on a log scale; both on land (ground at least 1 m above the water line) and at
-// least 200 m inside the terrain's edge. Two rays each: one that stops on anything (as the surface job's rays do)
+// to 1 km apart, evenly spread on a log scale; both on land (ground at or above the water line, y >= 0: the same
+// water test as the baker, so beaches count) and at least 200 m inside the terrain's edge. Two rays each: one that stops on anything (as the surface job's rays do)
 // and one that stops only on what stops bullets. The seed is fixed, so a rerun on the same world fires the same lines.
 //   ox,oz,og,eye,tx,tz,tg,target,dist,frac_all,hit_all,frac_bullet
 // frac_*: how far along the ray got (1 = clear); hit_all: the class of what stopped the first ray.
@@ -202,8 +209,7 @@ class RMT_SightLinesJob
 		float maxZ = m_Ctx.m_vMax[2];
 		if (wanted < 1 || maxX - minX <= 400 || maxZ - minZ <= 400)
 		{
-			RMT_Context.Say("error|sightlines|nothing to do (no lines asked for, or the world is under 400 m)");
-			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0);
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0, "nothing to do (no lines asked for, or the world is under 400 m)");
 			return 1;
 		}
 		string folder = m_Ctx.m_sOut + "/sightlines";
@@ -211,7 +217,7 @@ class RMT_SightLinesJob
 		FileHandle f = FileIO.OpenFile(folder + "/check.csv", FileMode.WRITE);
 		if (!f)
 		{
-			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0);
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, 0, "could not open " + folder + "/check.csv");
 			return 1;
 		}
 		f.Write("ox,oz,og,eye,tx,tz,tg,target,dist,frac_all,hit_all,frac_bullet\n");
@@ -225,7 +231,7 @@ class RMT_SightLinesJob
 			float ox = Math.RandomFloat(minX + 200, maxX - 200);
 			float oz = Math.RandomFloat(minZ + 200, maxZ - 200);
 			float og = world.GetSurfaceY(ox, oz);
-			if (og < 1)
+			if (og < 0)
 				continue;
 			float dist = Math.Pow(10, Math.RandomFloat(1, 3));
 			float ang = Math.RandomFloat(0, Math.PI2);
@@ -234,7 +240,7 @@ class RMT_SightLinesJob
 			if (tx < minX || tz < minZ || tx > maxX || tz > maxZ)
 				continue;
 			float tg = world.GetSurfaceY(tx, tz);
-			if (tg < 1)
+			if (tg < 0)
 				continue;
 			float eye = 1;
 			if (Math.RandomFloat01() < 0.3)
@@ -259,15 +265,18 @@ class RMT_SightLinesJob
 		f.Close();
 		if (made == 0)
 		{
-			RMT_Context.Say("error|sightlines|no land found for the sight lines");
-			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, 1, 0, System.GetTickCount() - t0);
+			m_Ctx.WriteStatus("sightlines", "failed", 0, 0, wanted, 0, System.GetTickCount() - t0, "no land found for the sight lines");
 			return 1;
 		}
-		string result = "done";
-		if (made < wanted)
-			result = "partial";
 		RMT_Context.Say(string.Format("sightlines|lines=%1|tries=%2", made, tries));
-		m_Ctx.WriteStatus("sightlines", result, 1, 0, 0, made, System.GetTickCount() - t0);
+		if (made < wanted)
+		{
+			// a short sample: partial, with how many lines are missing (not stored as a finished sample)
+			string why = string.Format("found land for %1 of %2 lines in %3 tries", made, wanted, tries);
+			m_Ctx.WriteStatus("sightlines", "partial", 1, 0, wanted - made, made, System.GetTickCount() - t0, why);
+			return 0;
+		}
+		m_Ctx.WriteStatus("sightlines", "done", 1, 0, 0, made, System.GetTickCount() - t0);
 		return 0;
 	}
 }
@@ -293,15 +302,27 @@ class RMT_NamesJob
 		for (int v = 0; v < n; v++)
 		{
 			string var = bc.GetVarName(v);
-			string value;
-			if (bc.Get(var, value))
+			// objects and object lists first: Get() also "reads" them, as an empty string, and they would never be walked
+			BaseContainerList list = bc.GetObjectArray(var);
+			if (list)
 			{
-				f.Write(head + RMT_Context.Q(prefix + var) + "," + RMT_Context.Q(value) + "\n");
+				for (int i = 0; i < list.Count() && i < 20; i++)
+				{
+					BaseContainer item = list.Get(i);
+					if (item)
+						DumpContainer(f, head, string.Format("%1%2[%3].", prefix, var, i), item, depth + 1);
+				}
 				continue;
 			}
 			BaseContainer child = bc.GetObject(var);
 			if (child)
+			{
 				DumpContainer(f, head, prefix + var + ".", child, depth + 1);
+				continue;
+			}
+			string value;
+			if (bc.Get(var, value))
+				f.Write(head + RMT_Context.Q(prefix + var) + "," + RMT_Context.Q(value) + "\n");
 		}
 	}
 
@@ -313,7 +334,7 @@ class RMT_NamesJob
 		FileHandle f = FileIO.OpenFile(folder + "/descriptors.csv", FileMode.WRITE);
 		if (!f)
 		{
-			m_Ctx.WriteStatus("names", "failed", 0, 0, 1, 0, 0);
+			m_Ctx.WriteStatus("names", "failed", 0, 0, 1, 0, 0, "could not open " + folder + "/descriptors.csv");
 			return 1;
 		}
 		f.Write("entity,class,prefab,name,x,y,z,component,var,value\n");
@@ -372,20 +393,67 @@ class RMT_NamesJob
 class RMT_ConflictJob
 {
 	protected RMT_Context m_Ctx;
-	protected ref array<string> m_aKeys = {"Campaign", "Suppl", "Resource", "VehicleSpawn", "Refuel", "Repair", "Fuel",
-		"Service", "Radio", "SpawnPoint", "Spawnpoint", "Cache", "Arsenal", "MilitaryBase", "Conflict", "HQ"};
+	// What belongs to the game mode, matched against a prefab path's folder and file-name words and against class
+	// names' words (split at capitals and underscores), never as a bare substring: "HQ" no longer matches any path that
+	// happens to contain those letters, nor "Fuel" every fuel can, nor "Resource" every resource name.
+	protected ref array<string> m_aKeys = {"Campaign", "Supply", "Supplies", "VehicleSpawn", "Refuel", "Repair",
+		"Service", "SupportStation", "Radio", "SpawnPoint", "Spawnpoint", "Cache", "Arsenal", "MilitaryBase", "Conflict", "HQ"};
+	// words that only count as part of a larger name (a fuel depot, a resource component), never alone
+	protected ref array<string> m_aKeysJoined = {"FuelDepot", "FuelStation", "FuelManager", "ResourceComponent",
+		"ResourceContainer", "ResourceGenerator", "ResourceConsumer"};
 
 	void RMT_ConflictJob(RMT_Context ctx)
 	{
 		m_Ctx = ctx;
 	}
 
+	// The words of a class name or a path: split at "/", "_", "." and at each capital that follows a small letter.
+	protected static void Words(string s, notnull array<string> words)
+	{
+		string word = "";
+		for (int i = 0; i < s.Length(); i++)
+		{
+			string ch = s.Get(i);
+			bool sep = ch == "/" || ch == "_" || ch == "." || ch == "{" || ch == "}" || ch == " ";
+			bool cap = ch.ToAscii() >= 65 && ch.ToAscii() <= 90;
+			bool prevSmall = i > 0 && s.Get(i - 1).ToAscii() >= 97 && s.Get(i - 1).ToAscii() <= 122;
+			if (sep || (cap && prevSmall))
+			{
+				if (word != "")
+					words.Insert(word);
+				word = "";
+				if (sep)
+					continue;
+			}
+			word += ch;
+		}
+		if (word != "")
+			words.Insert(word);
+	}
+
 	protected bool Wanted(string s)
 	{
-		foreach (string k : m_aKeys)
+		if (s == "")
+			return false;
+		foreach (string j : m_aKeysJoined)
 		{
-			if (s.Contains(k))
+			if (s.Contains(j))
 				return true;
+		}
+		array<string> words = {};
+		Words(s, words);
+		// a key may be one word ("Radio") or two run together ("VehicleSpawn", "MilitaryBase"): match against single
+		// words and against each pair of neighbours
+		for (int i = 0; i < words.Count(); i++)
+		{
+			string pair = "";
+			if (i + 1 < words.Count())
+				pair = words[i] + words[i + 1];
+			foreach (string k : m_aKeys)
+			{
+				if (words[i] == k || pair == k)
+					return true;
+			}
 		}
 		return false;
 	}
@@ -481,7 +549,7 @@ class RMT_ConflictJob
 		FileHandle f = FileIO.OpenFile(folder + "/entities.csv", FileMode.WRITE);
 		if (!f)
 		{
-			m_Ctx.WriteStatus("conflict", "failed", 0, 0, 1, 0, 0);
+			m_Ctx.WriteStatus("conflict", "failed", 0, 0, 1, 0, 0, "could not open " + folder + "/entities.csv");
 			return 1;
 		}
 		f.Write("entity,class,prefab,name,x,y,z,component,var,value\n");

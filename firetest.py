@@ -309,10 +309,23 @@ def group_plan(dist=1200, ring=3, rounds=10, w=None, s=None, seed=5):
     raise SystemExit('no level aim found')
 
 
+def landed(rows, label=''):
+    """The rows that are ground impacts. The game side marks each row's end (shots.csv `end`): ground, in_air (removed
+    too high to reach the ground: its last known point, not an impact), cutoff/lost (still flying when it stopped being
+    followed), launch (only how it left the muzzle) or lay_failed (not fired). Files from before the column are all
+    impacts."""
+    out = [r for r in rows if r.get('end') in (None, '', 'ground')]
+    other = collections.Counter(r.get('end') for r in rows if r.get('end') not in (None, '', 'ground'))
+    if other and label:
+        print(f"{label}: {sum(other.values())} row(s) are not ground impacts and are left out: "
+              + ', '.join(f'{n} {k}' for k, n in sorted(other.items())))
+    return out
+
+
 def group_score(d):
     """Where each round of the group landed against the target, and the group's size."""
     p = json.load(open(os.path.join(d, 'plan.json')))[0]
-    rows = list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')))
+    rows = landed(list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline=''))), 'group')
     a = math.radians(p['map_az'])
     pts = []
     for r in rows:
@@ -363,7 +376,7 @@ def gun_score(d):
     """Where each round fired through the real mortar landed, how well the tube was laid, and how far each round left
     the barrel's direction (the barrel's dispersion, which a direct launch never has)."""
     p = json.load(open(os.path.join(d, 'plan.json')))[0]
-    rows = list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')))
+    rows = landed(list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline=''))), 'gun')
     mpc = 6400
     a = math.radians(p['map_az'])
     to_mil = lambda rad: rad * mpc / (2 * math.pi)
@@ -504,7 +517,9 @@ def study_rows(dirs):
     for d in dirs:
         plan = {p['id']: p for p in json.load(open(os.path.join(d, 'plan.json')))}
         for r in csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')):
-            if r['id'] in seen or not r.get('ground_target'):  # a line cut short when a run stopped
+            if r['id'] in seen or not r.get('ground_target'):  # a line cut short when a run stopped (or a failed lay)
+                continue
+            if r.get('end') in ('in_air', 'lost', 'lay_failed'):
                 continue
             seen.add(r['id'])
             out.append((r, plan[r['id']]))
@@ -684,7 +699,7 @@ def run(rows=None, args=()):
 # --- scoring --------------------------------------------------------------------------------------------------------
 def score(d):
     plan = {p['id']: p for p in json.load(open(os.path.join(d, 'plan.json')))}
-    rows = list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline='')))
+    rows = landed(list(csv.DictReader(open(os.path.join(d, 'shots.csv'), newline=''))), 'fire')
     shots = collections.defaultdict(list)
     for r in rows:
         shots[r['id']].append(r)

@@ -36,7 +36,7 @@
 | `check`: `no baked line of sight in <folder>` | Run `python rmt.py bake <world> --parts los` first. |
 | `check`: `bullets not scored (these tiles have no cover plane)` | The tiles were trimmed to four planes. Score a bake's own `site/` instead. |
 | `check`: agreement far below 95% | The sight lines and the tiles are from different worlds or builds (`--csv` and `--site` mixed up), or the bake is broken. |
-| `sightlines`: `nothing to do` or `no land found` | The world is under 400 m across, or has no ground 1 m above the water line inside its edge. |
+| `sightlines`: `nothing to do` or `no land found` | The world is under 400 m across, or has no ground at or above the water line inside its edge. |
 | `fieldmap`: `--to must be the field map's folder` | arma-map is not at `..\..\arma-map\everon-map` from this repo; pass `--to` the folder holding `server.py`. |
 | `fieldmap`: `no site id for <slug>` | A new map: pass `--as <id>`, add it to `MAPS` in the field map's `static/app.js` and `server.py`, and to `MAPS` in `rmtlib/fieldmap.py` (its 3D title and start). |
 | `fieldmap`: `<file> isn't in <site>` | Bake the missing part (`los`, `places`, `roads`, `foliage`, `plants`) first. |
@@ -55,9 +55,11 @@ python -m rmtlib.pak list "Arland"   # proves the game paks are readable
 
 ## Not wired up or not finished
 
-- `foliagetrace` is an experiment and is not part of the pipeline.
-- The `sightlines` job is a port of the old Everon exporter's check and has not been run in Workbench yet; its scorer
-  (`rmt.py check`) was proven on the old Everon `check.csv`. Try it on Arland first.
+- `foliagetrace` is research only: not part of the pipeline and in no user-facing job list. Its answer is in (leaves are
+  not in the collision data).
+- The `sightlines` job has run in Workbench (EmptyEden, 2026-10-05: 200 lines, status done). Its land test is now the
+  baker's water test (ground at or above 0 m), so beaches count. It is not a score for foliage: its rays go through
+  leaves.
 - The `.topo` sections `AREA`, `WATR` and `PWLN` are not decoded (forest outlines, water, power lines); `ROAD`,
   `BULD` and `HILL` are.
 - Later work: doors, power lines and POIs. Nothing checks the 2.5 GB site-data budget yet ([bakers.md](bakers.md)).

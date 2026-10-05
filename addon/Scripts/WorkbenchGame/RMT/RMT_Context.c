@@ -147,11 +147,18 @@ class RMT_Context
 
 	//------------------------------------------------------------------------------------------------
 	// Writes <out>/<job>.status.json. rmt.py deletes it before every launch, so it is never stale.
-	bool WriteStatus(string job, string result, int made, int skipped, int remaining, int items, float ms)
+	// The contract (the same for the game-side jobs, see RMT_Status): done = every output the job claims exists, is not
+	// empty and holds its rows; partial = a declared incomplete output, still usable, with remaining > 0 saying how much
+	// is missing; failed = do not bake it and run it again, with reason saying why.
+	// extra: more JSON members, each already formatted as a line ("  \"k\": 1,").
+	bool WriteStatus(string job, string result, int made, int skipped, int remaining, int items, float ms, string reason = "", string extra = "")
 	{
 		FileHandle f = FileIO.OpenFile(string.Format("%1/%2.status.json", m_sOut, job), FileMode.WRITE);
 		if (!f)
 			return false;
+		string why = reason;
+		why.Replace("\\", "\\\\");
+		why.Replace("\"", "\\\"");
 		f.WriteLine("{");
 		f.WriteLine(string.Format("  \"job\": \"%1\",", job));
 		f.WriteLine(string.Format("  \"result\": \"%1\",", result));
@@ -159,9 +166,14 @@ class RMT_Context
 		f.WriteLine(string.Format("  \"skipped\": %1,", skipped));
 		f.WriteLine(string.Format("  \"remaining\": %1,", remaining));
 		f.WriteLine(string.Format("  \"items\": %1,", items));
+		if (extra != "")
+			f.WriteLine(extra);
+		f.WriteLine(string.Format("  \"reason\": \"%1\",", why));
 		f.WriteLine(string.Format("  \"ms\": %1", ms));
 		f.WriteLine("}");
 		f.Close();
+		if (result != "done")
+			Say(string.Format("status|%1|%2|%3", job, result, reason));
 		return true;
 	}
 
@@ -191,17 +203,104 @@ class RMT_Context
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Engine helpers, not map objects: decals, lights, probes, roads (exported by the roads job), spawn points,
-	// editor icons, and anything wider than 400 m (terrain, ocean, area triggers).
+	// Engine helpers, not map objects, left out of the entities and surface exports ON PURPOSE (each listed here):
+	//   DecalEntity, LightEntity, GameEnvironmentProbeEntity, ProbeVolume, SCR_PrefabSpawnPoint, EntityEditIcon: no shape
+	//   RoadEntity: exported by the roads job
+	//   PowerlineEntity: the cables between poles; the poles are entities of their own and are kept, and the lines
+	//     themselves come from the mapdata job (BI's Geometry2D export)
+	//   the terrain, the ocean, lakes and rivers (Water() below): they are the ground and the water, not objects on it
+	// Size is not a reason: a long wall, a bridge or a sea wall is kept however long it is.
 	static bool Skippable(IEntity e)
 	{
 		string cls = e.ClassName();
 		if (cls == "DecalEntity" || cls == "LightEntity" || cls == "GameEnvironmentProbeEntity" || cls == "ProbeVolume"
 			|| cls == "RoadEntity" || cls == "PowerlineEntity" || cls == "SCR_PrefabSpawnPoint" || cls == "EntityEditIcon")
 			return true;
-		vector wmin, wmax;
-		e.GetWorldBounds(wmin, wmax);
-		return wmax[0] - wmin[0] > 400 || wmax[2] - wmin[2] > 400;
+		return Water(e) || cls.Contains("Terrain");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// The sea, a lake or a river: by class (OceanEntity, LakeEntity, RiverEntity...) or by a water prefab folder.
+	static bool Water(IEntity e)
+	{
+		string cls = e.ClassName();
+		if (cls.Contains("Ocean") || cls.Contains("Lake") || cls.Contains("River"))
+			return true;
+		string prefab = PrefabOf(e);
+		return prefab.Contains("/WEGenerators/Water/") || prefab.Contains("/Water/Lake") || prefab.Contains("/Water/River") || prefab.Contains("/Water/Ocean");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Standing vegetation, by prefab folder (the same rule as rmtlib/foliage.py standing_plant) or class: trees,
+	// bushes and their destructible versions, whatever entity class they are.
+	static bool Vegetation(IEntity e)
+	{
+		string prefab = PrefabOf(e);
+		if (prefab.Contains("/Vegetation/Tree/") || prefab.Contains("/Vegetation/Bush/") || prefab.Contains("/Vegetation/Trees/") || prefab.Contains("/Vegetation/Bushes/"))
+			return true;
+		string cls = e.ClassName();
+		return cls == "Tree" || cls == "Bush" || cls.Contains("TreeEntity") || cls.Contains("BushEntity");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// A building: by class, or by the folders the game keeps houses, halls and towers in (walls and fences are not
+	// buildings: the baker draws them itself).
+	static const ref array<string> BUILDING_FOLDERS = {"/Houses/", "/Ruins/", "/Services/", "/Commercial/Pubs/",
+		"/Commercial/Shops/", "/Cultural/Churches/", "/Cultural/Chapels/", "/Cultural/Castles/", "/Agriculture/Barn",
+		"/Agriculture/CowShed", "/Agriculture/Hayloft", "/Agriculture/Greenhouse", "/Airport/ControlTower",
+		"/Airport/Hangar", "/Military/Bunkers/", "/Industrial/Sheds/", "/Industrial/Garages/", "/Recreation/Houses/"};
+	static bool Building(IEntity e)
+	{
+		if (e.ClassName().Contains("Building"))
+			return true;
+		string prefab = PrefabOf(e);
+		if (!prefab.Contains("/Structures/") || prefab.Contains("/Walls/") || prefab.Contains("/BuildingParts/") || prefab.Contains("/Signs/"))
+			return false;
+		foreach (string folder : BUILDING_FOLDERS)
+		{
+			if (prefab.Contains(folder))
+				return true;
+		}
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Every entity whose own box overlaps the area, objects reaching in from far outside it included (a long wall, a
+	// bridge or a sea wall whose origin is hundreds of metres away). Objects up to PAD m across are found by a query
+	// padded by PAD; bigger ones come from a list of every object over PAD m across, made once for the whole world.
+	static const float PAD = 50;
+	protected ref array<IEntity> m_aLarge;
+	array<IEntity> QueryOverlapping(float x0, float z0, float x1, float z1)
+	{
+		if (!m_aLarge)
+		{
+			m_aLarge = {};
+			foreach (IEntity big : Query(m_vMin[0] - PAD, m_vMin[2] - PAD, m_vMax[0] + PAD, m_vMax[2] + PAD))
+			{
+				vector bmin, bmax;
+				big.GetWorldBounds(bmin, bmax);
+				if (bmax[0] - bmin[0] > PAD || bmax[2] - bmin[2] > PAD)
+					m_aLarge.Insert(big);
+			}
+			Say(string.Format("query|objects over %1 m across=%2", PAD, m_aLarge.Count()));
+		}
+		array<IEntity> found = {};
+		set<IEntity> seen = new set<IEntity>();
+		array<IEntity> candidates = {};
+		candidates.Copy(Query(x0 - PAD, z0 - PAD, x1 + PAD, z1 + PAD));
+		candidates.InsertAll(m_aLarge);
+		foreach (IEntity e : candidates)
+		{
+			if (!e || seen.Contains(e))
+				continue;
+			vector wmin, wmax;
+			e.GetWorldBounds(wmin, wmax);
+			if (wmax[0] < x0 || wmin[0] > x1 || wmax[2] < z0 || wmin[2] > z1)
+				continue;
+			seen.Insert(e);
+			found.Insert(e);
+		}
+		return found;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -274,7 +373,7 @@ class RMT_ChunkJob
 					continue;
 				if (m_Ctx.m_iMaxChunks > 0 && made >= m_Ctx.m_iMaxChunks)
 				{
-					m_Ctx.WriteStatus(m_sName, "partial", made, skipped, total - skipped - made, m_iItems, System.GetTickCount() - t0);
+					m_Ctx.WriteStatus(m_sName, "partial", made, skipped, total - skipped - made, m_iItems, System.GetTickCount() - t0, "stopped at the -rmtMaxChunks test limit");
 					return 0;
 				}
 				float c0 = System.GetTickCount();
@@ -282,7 +381,7 @@ class RMT_ChunkJob
 				if (!WriteChunk(tx1, tz1, path) || !m_Ctx.MarkOk(path))
 				{
 					RMT_Context.Say(string.Format("error|%1|chunk %2,%3 not written", m_sName, tx1, tz1));
-					m_Ctx.WriteStatus(m_sName, "failed", made, skipped, total - skipped - made, m_iItems, System.GetTickCount() - t0);
+					m_Ctx.WriteStatus(m_sName, "failed", made, skipped, total - skipped - made, m_iItems, System.GetTickCount() - t0, string.Format("chunk %1,%2 not written", tx1, tz1));
 					return 1;
 				}
 				made++;

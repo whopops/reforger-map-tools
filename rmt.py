@@ -22,7 +22,7 @@ import argparse
 import sys
 
 from rmtlib import events, paths
-from rmtlib.export import ALL_JOBS, JOBS, Exporter
+from rmtlib.export import ALL_JOBS, JOBS, RESEARCH_JOBS, Exporter
 from rmtlib.steam import Install
 
 
@@ -142,7 +142,7 @@ def dispatch(args, ap):
         return 0
     if args.cmd == "export":
         jobs = [j.strip() for j in args.jobs.split(",") if j.strip()]
-        unknown = [j for j in jobs if j not in ALL_JOBS]
+        unknown = [j for j in jobs if j not in ALL_JOBS + RESEARCH_JOBS]
         if unknown:
             ap.error(f"unknown jobs: {unknown}")
         print(f"Arma Reforger build {install.game_build}, Tools build {install.tools_build}")
@@ -297,12 +297,17 @@ def bake_parts(m, site, parts, workbench=None):
                 print(f"relief: needs the mapdata job's picture ({m['raw']}\\mapdata) and a baked line of sight ({los})")
                 ok = False
         elif part == "foliage":
-            from rmtlib import foliage
+            # the mesh library for this game build first (python -m rmtlib.foliage_mesh build), the photographs for
+            # what it lacks; with no library, the photographs alone as before
+            from rmtlib import foliage, foliage_mesh
             photos = os.path.join(Install(workbench).game_profile, "rmt", m["slug"], m["gameBuild"], "foliage")
-            if os.path.isfile(os.path.join(photos, "shots.csv")):
+            if foliage_mesh.site(m["raw"], os.path.join(site, "foliage"), m["gameBuild"], photos):
+                pass
+            elif os.path.isfile(os.path.join(photos, "shots.csv")):
                 foliage.analyse(photos, [os.path.join(site, "foliage")])
             else:
-                print(f"foliage: no photographs in {photos} (run the foliage job first)")
+                print(f"foliage: no mesh library for game build {m['gameBuild']} (python -m rmtlib.foliage_mesh build) "
+                      f"and no photographs in {photos} (the foliage job)")
                 ok = False
         elif part == "plants":
             from rmtlib import bake_plants

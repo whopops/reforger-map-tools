@@ -1,7 +1,8 @@
 # Review: measuring foliage opacity without screenshots
 
-Status: review and proposal. Based on the code and docs in this repo and on the Workbench script API pages in the
-Tools install (`Workbench\docs\EnfusionScriptAPI`). No measurements were made for this review.
+Status: review and proposal, now done: option 2 (compute it from the game files) works and is checked against the
+game; see [foliage-mesh.md](foliage-mesh.md). The rest is kept for the record. Based on the code and docs in this repo
+and on the Workbench script API pages in the Tools install (`Workbench\docs\EnfusionScriptAPI`).
 
 ## 1. What the number is for
 

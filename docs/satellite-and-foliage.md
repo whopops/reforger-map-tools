@@ -69,17 +69,25 @@ python rmt.py export <world> --jobs probe,entities,foliage
    common first. Seasonal variants on a map (snowy spruce, autumn birch) get their own kind.
 2. It starts the game on an **empty world** (`EmptyArland` by default, `FoliageWorld` to change), so nothing stands
    behind the plant.
-3. For each plant, the entity spawns one plant `FoliageLift` metres (default 60) above the ground, with the camera low
-   enough that the plant's base is 5 degrees above the horizon, so everything behind it is sky. It takes these views,
-   each twice, once with the plant shown (`<id>_a`) and once hidden (`<id>_b`):
+3. For each plant, the entity spawns one plant `FoliageLift` metres (default 60) above the ground, with the camera at
+   a standing player's eye, 1.7 m above the plant's base, so what is behind the plant is sky or distant land. The
+   plant is told apart from it by the shown/hidden pair, not by a sky colour. Every picture waits until the camera,
+   the distance and the plant's visibility have been still for `FoliageSettleFrames` frames (default 30) and
+   `FoliageSettle` seconds (default 0.5), so the far views show the model the game swaps in at that distance and the
+   hidden picture really has no plant in it. `FoliageWind` holds the wind at a speed (0 photographs the plants at rest,
+   which is what the mesh measurement assumes). It takes these views, each twice, once with the plant shown (`<id>_a`)
+   and once hidden (`<id>_b`):
    - `<key>_0_<s>`: `FoliageSides` sides (default 8) close up, backed off until the plant fits the frame,
-   - `<key>_top`: straight up from below, the crown against the sky,
+   - `<key>_top`: straight up from below, the crown against the sky (skipped, with `<key>_top_skip.txt`, when the
+     crown is too wide to frame from below the lift; never stored clipped),
    - `<key>_d<m>_<s>`: the same sides again at each distance in `FoliageLod` (default 25, 50, 100, 200, 300 m).
 4. That is 49 views (98 screenshots) per plant, about 100 s per plant. Everon has about 70 kinds.
 5. While the game runs, `rmt.py` converts the 6.2 MB BMP screenshots to lossless PNG (about 1 MB each) in the
    background and removes a BMP only after the PNG is verified.
-6. Each view adds a row to `shots.csv` (the old tool's columns plus `view`). A plant whose last view is on disk is
-   skipped on a rerun.
+6. Each view adds a row to `shots.csv` (the old tool's columns plus `view`). A plant is skipped on a rerun only when
+   both pictures of every view are on disk and not empty and every view's row is in `shots.csv`. The status is
+   `failed` if setup failed (no `plants.csv`, no camera) or nothing was photographed, `partial` (remaining = plants
+   that could not be spawned or framed) if some were, else `done`.
 7. `bake --parts foliage` measures the pairs, then `--parts plants` joins the result to every plant on the map.
 
 ### Why photographs
@@ -93,11 +101,12 @@ what a player sees.
 
 Eight sides are enough: the old Everon measurements used 16, and their side-to-side spread was 0.06, with 8 sides
 landing within 0.008 of all 16. Those old photos were partly taken against distant land, which under-counted cover a
-little in the low slices; this job puts the plant 60 m up so everything behind it is sky.
+little in the low slices; this job puts the plant 60 m up, so what is behind it is mostly sky.
 
 ### Tuning (`--set`)
 `FoliageWorld`, `FoliageLimit` (try `--set FoliageLimit=3` first), `FoliageSides`, `FoliageFov`, `FoliageLift`,
-`FoliageTop`, `FoliageLod`, `FoliageSpot`, `FoliageWidth`, `FoliageHeight`, `FoliageMode`: see
+`FoliageTop`, `FoliageLod`, `FoliageSpot`, `FoliageWidth`, `FoliageHeight`, `FoliageMode`, `FoliageSettleFrames`,
+`FoliageSettle`, `FoliageWind`: see
 [export-jobs.md](export-jobs.md). The game's video settings are changed for the run (to the given size and mode) and
 the original settings file is put back afterwards, even after a failure.
 

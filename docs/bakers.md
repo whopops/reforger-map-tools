@@ -110,9 +110,14 @@ counted from the south. Each coarser zoom is built from four tiles below it. Sea
 are entirely empty are not written. Needs the shots in the game profile folder and the terrain export. Takes a long
 time on a large map.
 
-## `foliage` (`foliage.py`) -> `foliage/`
+## `foliage` (`foliage_mesh.py`, `foliage.py`) -> `foliage/`
 
-Analyses the foliage photographs (before/after pairs; the pixels that differ are where the plant blocks the view).
+From the mesh library for the game build when there is one (`python -m rmtlib.foliage_mesh build`, see
+[foliage-mesh.md](foliage-mesh.md)): every standing plant kind in the entities export, same files and layout, plus
+`k_disc`, `k_chord`, `k90`, `width_m` per slice in the library (the site's `foliage_profiles.json` keeps only `y`, `cover`
+and `k`, the fields `los-worker.js` reads). Kinds the library lacks come from the photographs below, or are listed.
+
+Without a library it analyses the foliage photographs (before/after pairs; the pixels that differ are where the plant blocks the view).
 Writes `foliage_shots.csv` (`id,prefab,kind,band,slice_m,cover,k,width_m,pixels`) and `foliage_profiles.json`
 (per prefab: kind, shots, height, close-up `slices`, `top` from below, and `bands` per distance). Also writes both
 into the export's own foliage folder, with `debug/<id>.png` pictures for the first 20 shots (plant tinted red, slice
@@ -136,7 +141,11 @@ were not photographed are left out and counted in the log.
 
 - `foliage.json`: `{"bins": 10, "margin", "baseUnit", "tiles", "prefabs", "plants": [{"h", "hw": [10], "k": [10]}, ...]}`.
   Per kind (the index is the kind byte in the plant tiles): height `h`, and per tenth of that height the half-width
-  `hw` and blocking `k`.
+  `hw` (half the mean measured width) and blocking `k = mean(cover x width) / (pi hw^2)`: the slices' blocked
+  cross-section spread over the disc the light grid fills, so a cell of many plants blocks a sight line by the sum
+  of their blocked cross-sections. Only `cover` and `width_m` are read (photographs and the mesh library give the
+  same k for the same picture). It is no longer `-ln(1 - cover) / width`, which made a crown with a hole as dense
+  as a solid one.
 - `plants/<tx>_<tz>.bin.gz`: per chunk, every plant reaching into it: `n` Uint32, then `x` Uint16[n], `z` Uint16[n]
   (cm from `margin` metres south-west of the chunk corner), `base` Uint16[n] (ground under the plant in `baseUnit`
   metres; 0.01 unless the map is too high for cm), `kind` Uint8[n], `scale` Uint8[n] (hundredths).

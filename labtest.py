@@ -115,8 +115,10 @@ def mortar_tables(c, selected, output, module):
         code, _, status = select.runner(c.install).run(['mortar_tables'], rel, module.WORLD,
                                            args=['-rmtMortarPlan='+rel+'/plan.csv'], stall=300, limit=1800)
         status = read_status(folder/'mortar_tables.status.json')
-        if code or not status or status.get('result') != 'done': raise RuntimeError('Selected mortar tables did not finish')
-        write_json(table_file, bake_mortar(plans, folder/'mortar-tables.csv'))
+        tables = folder/'mortar_tables'/'tables.csv'  # where RMT_MortarTablesJob writes them
+        if code or status is None or status.get('result') != 'done' or not tables.is_file():
+            raise RuntimeError('Selected mortar tables did not finish: '+str((status or {}).get('reason') or 'no status'))
+        write_json(table_file, bake_mortar(plans, tables))
     module.TABLES = json.loads(table_file.read_text(encoding='utf8'))['weapons']
 
 

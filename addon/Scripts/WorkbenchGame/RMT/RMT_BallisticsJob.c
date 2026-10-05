@@ -21,7 +21,10 @@ class RMT_BallisticsJob
 		for (int i, n = src.GetComponentCount(); i < n; i++)
 		{
 			IEntityComponentSource c = src.GetComponent(i);
-			if (!c || !c.GetClassName().ToType().IsInherited(ProjectileMoveComponent))
+			if (!c)
+				continue;
+			typename t = c.GetClassName().ToType();
+			if (!t || !t.IsInherited(ProjectileMoveComponent))
 				continue;
 			float v;
 			c.Get("InitSpeed", v);
@@ -77,9 +80,18 @@ class RMT_BallisticsJob
 		float t0 = System.GetTickCount();
 		string dir = m_Ctx.m_sOut + "/ballistics";
 		RMT_Context.MakeDirs(dir);
+		// GetGame() is null in a Workbench plugin on some builds: the shells are spawned through it, so say so and stop
+		if (!GetGame())
+		{
+			m_Ctx.WriteStatus("ballistics", "failed", 0, 0, 1, 0, 0, "GetGame() is null in this Workbench build; the shells cannot be spawned");
+			return 1;
+		}
 		FileHandle f = FileIO.OpenFile(dir + "/sim.csv", FileMode.WRITE);
 		if (!f)
+		{
+			m_Ctx.WriteStatus("ballistics", "failed", 0, 0, 1, 0, 0, "could not open " + dir + "/sim.csv");
 			return 1;
+		}
 		f.WriteLine("shell,ring,coef,v0,angle,dh,wind,x,y,z");
 
 		array<ResourceName> shells = {
@@ -100,12 +112,14 @@ class RMT_BallisticsJob
 		winds.Insert(vector.Forward * 10);
 
 		int rows;
+		int failedShells;
 		foreach (ResourceName rn : shells)
 		{
 			Resource res = Resource.Load(rn);
 			if (!res.IsValid())
 			{
 				RMT_Context.Say("ballistics|error|no prefab " + rn);
+				failedShells++;
 				continue;
 			}
 			IEntitySource src = res.GetResource().ToEntitySource();
@@ -114,6 +128,7 @@ class RMT_BallisticsJob
 			if (!shell || v0 <= 0)
 			{
 				RMT_Context.Say("ballistics|error|could not spawn " + rn);
+				failedShells++;
 				continue;
 			}
 			ProjectileMoveComponent move = ProjectileMoveComponent.Cast(shell.FindComponent(ProjectileMoveComponent));
@@ -122,6 +137,7 @@ class RMT_BallisticsJob
 			{
 				RMT_Context.Say("ballistics|error|no move or charge component on " + rn);
 				delete shell;
+				failedShells++;
 				continue;
 			}
 			for (int r, nr = gadget.GetNumberOfChargeRingConfigurations(); r < nr; r++)
@@ -148,9 +164,18 @@ class RMT_BallisticsJob
 		f.Close();
 		RMT_Context.Say(string.Format("ballistics|done|rows=%1|ms=%2", rows, System.GetTickCount() - t0));
 		string result = "done";
+		string reason = "";
 		if (rows == 0)
+		{
 			result = "failed";
-		m_Ctx.WriteStatus("ballistics", result, 1, 0, 0, rows, System.GetTickCount() - t0);
+			reason = "no shell could be simulated";
+		}
+		else if (failedShells > 0)
+		{
+			result = "partial";
+			reason = string.Format("%1 of %2 shells could not be simulated", failedShells, shells.Count());
+		}
+		m_Ctx.WriteStatus("ballistics", result, 1, 0, failedShells, rows, System.GetTickCount() - t0, reason);
 		if (rows == 0)
 			return 1;
 		return 0;

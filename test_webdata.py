@@ -32,6 +32,14 @@ class WebsiteDataTests(unittest.TestCase):
             self.assertEqual(doc['weapons']['M252']['shells']['HE M821']['0']['table'][-1][3], 61)
             missing = dict(page); missing['id'] = '1'
             with self.assertRaises(ValueError): webdata.bake_mortar([page, missing], file)
+            # the job now leaves the last cell empty (no sample 50 m on), never 0; a page it skipped is listed missing
+            file.write_text('id,range,elevation,time,delevation\n0,50,1500,13.2,61\n0,100,1450,13.0,\n')
+            doc = webdata.bake_mortar([page, missing], file, skip={'1'})
+            self.assertEqual(doc['weapons']['M252']['shells']['HE M821']['0']['table'][-1][3], 61)
+            self.assertEqual(doc['missing'], ['1'])
+            # an empty cell inside a table is an error, not a 0
+            file.write_text('id,range,elevation,time,delevation\n0,50,1500,13.2,\n0,100,1450,13.0,60\n')
+            with self.assertRaises(ValueError): webdata.bake_mortar([page], file)
 
     def test_blast_standing_uncon_selection_and_nonfinite_rejected(self):
         summary = {'HE|standing|uncon': {'down50': 18, 'hurt10': 27}, 'HE|prone|uncon': {'down50': 2, 'hurt10': 4}}

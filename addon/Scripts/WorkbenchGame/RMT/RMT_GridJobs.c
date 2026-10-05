@@ -4,7 +4,8 @@
 //------------------------------------------------------------------------------------------------
 // terrain/t_TX_TZ.csv: header "x0,z0,step,cols,rows", then one row per line from south to north, west to east,
 // heights in integer centimetres (GetSurfaceY, the ground without objects). The last row and column repeat the
-// next chunk's first, so chunks overlap by one sample.
+// next chunk's first, so chunks overlap by one sample. That overlap is exact only when the step divides the tile, so
+// any other step is refused (the baker would reject the stitched grid).
 class RMT_TerrainJob : RMT_ChunkJob
 {
 	protected float m_fStep;
@@ -12,8 +13,18 @@ class RMT_TerrainJob : RMT_ChunkJob
 	void RMT_TerrainJob(RMT_Context ctx, string name, string folder, string prefix)
 	{
 		m_fStep = ctx.Arg("-rmtStep", "1").ToFloat();
-		if (m_fStep < 0.25)
-			m_fStep = 0.25;
+	}
+
+	override int Run()
+	{
+		int per = Math.Round(m_Ctx.m_fTile / m_fStep);
+		if (m_fStep < 0.25 || per < 1 || Math.AbsFloat(per * m_fStep - m_Ctx.m_fTile) > 0.001)
+		{
+			string why = string.Format("terrain step %1 m does not divide the %2 m tile (or is under 0.25 m): chunks would not stitch", m_fStep, m_Ctx.m_fTile);
+			m_Ctx.WriteStatus(m_sName, "failed", 0, 0, 1, 0, 0, why);
+			return 1;
+		}
+		return super.Run();
 	}
 
 	override protected bool WriteChunk(int tx, int tz, string path)
@@ -95,11 +106,20 @@ class RMT_EntitiesJob : RMT_ChunkJob
 //------------------------------------------------------------------------------------------------
 // surface/s_TX_TZ.csv: rays over every spot an object covers (same as the old "Island: surfaces").
 // Header "x0,z0,step,cols,rows", then sparse lines "col,row,top,bottom,kind,cover", heights in decimetres above
-// the ground. kind 1 building, 2 other solid, 3 vegetation. Unlisted cells are open ground or water.
+// the ground. kind 1 building, 2 other solid, 3 vegetation (trees and bushes: the baker tells bushes apart). Unlisted
+// cells are open ground or water.
+// What a ray hit is classified by its prefab's folder as well as its class (RMT_Context.Vegetation, Building, Water),
+// so a bush or a destructible tree of any class is vegetation (it gets a canopy underside, not a solid column from the
+// ground), a house of class GenericEntity is a building, and a custom water entity is water. Anything else is kind 2;
+// each class that ended up there is listed once in surface/kind2_classes.csv (class,prefab,hits), so a new kind of
+// object turned into solid columns is never silent.
+// The cells are marked from every object whose own box overlaps the chunk (RMT_Context.QueryOverlapping), however
+// far outside it its origin is.
 class RMT_SurfaceJob : RMT_ChunkJob
 {
 	protected float m_fStep;
 	protected ref array<int> m_aOcc = {};
+	protected ref map<string, int> m_mKind2 = new map<string, int>();   // class|prefab -> hits stored as kind 2
 
 	void RMT_SurfaceJob(RMT_Context ctx, string name, string folder, string prefix)
 	{
@@ -113,13 +133,42 @@ class RMT_SurfaceJob : RMT_ChunkJob
 		if (!hit)
 			return 0;
 		string cls = hit.ClassName();
-		if (cls == "Tree")
-			return 3;
-		if (cls.Contains("Lake") || cls.Contains("Ocean") || cls.Contains("Terrain") || cls.Contains("River"))
+		if (cls.Contains("Terrain") || RMT_Context.Water(hit))
 			return 0;
-		if (cls.Contains("Building"))
+		if (RMT_Context.Vegetation(hit))
+			return 3;
+		if (RMT_Context.Building(hit))
 			return 1;
 		return 2;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void NoteKind2(IEntity hit)
+	{
+		string key = hit.ClassName() + "|" + RMT_Context.PrefabOf(hit);
+		m_mKind2.Set(key, m_mKind2.Get(key) + 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override int Run()
+	{
+		int code = super.Run();
+		FileHandle f = FileIO.OpenFile(m_Ctx.m_sOut + "/surface/kind2_classes.csv", FileMode.WRITE);
+		if (f)
+		{
+			f.WriteLine("class,prefab,hits");
+			foreach (string key, int hits : m_mKind2)
+			{
+				array<string> parts = {};
+				key.Split("|", parts, false);
+				string prefab = "";
+				if (parts.Count() > 1)
+					prefab = parts[1];
+				f.WriteLine(string.Format("%1,%2,%3", RMT_Context.Q(parts[0]), RMT_Context.Q(prefab), hits));
+			}
+			f.Close();
+		}
+		return code;
 	}
 
 	protected float Trace(vector from, vector to, int mask, out IEntity hit)
@@ -142,8 +191,9 @@ class RMT_SurfaceJob : RMT_ChunkJob
 		m_aOcc.Resize(per * per);
 		for (int i = 0; i < per * per; i++)
 			m_aOcc[i] = 0;
-		// Mark the cells any object's footprint covers (objects reaching in from the next chunk included).
-		array<IEntity> found = m_Ctx.Query(x0 - 50, z0 - 50, x0 + m_Ctx.m_fTile + 50, z0 + m_Ctx.m_fTile + 50);
+		// Mark the cells any object's footprint covers (objects reaching in from outside the chunk included, however
+		// far away their origin is).
+		array<IEntity> found = m_Ctx.QueryOverlapping(x0, z0, x0 + m_Ctx.m_fTile, z0 + m_Ctx.m_fTile);
 		foreach (IEntity e : found)
 		{
 			if (RMT_Context.Skippable(e))
@@ -181,6 +231,8 @@ class RMT_SurfaceJob : RMT_ChunkJob
 				int kind = HitKind(hit);
 				if (kind == 0 || top < 0.2)
 					continue;
+				if (kind == 2)
+					NoteKind2(hit);
 				float bottom = 0;
 				if (kind == 3)
 				{

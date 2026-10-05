@@ -13,20 +13,42 @@ python rmt.py export <world> [--jobs a,b,c] [--tile 500] [--region tx0,tz0,tx1,t
    (made by `rmt.py worlds`). The run's name is `<slug>/<build>`.
 2. **Open the run record**, `out/<slug>/<build>/manifest.json`. If it exists the run resumes inside it.
 3. **Run the Workbench jobs** (`probe`, `mapdata`, `roads`, `names`, `entities`, `terrain`, `surface`,
-   `sightlines`, `foliagetrace`) in **one Workbench launch**, one load of the world, in the order given.
-4. After each launch, read every job's `<job>.status.json`. Jobs whose status is `done` or `partial` are recorded;
-   the rest are relaunched together (up to `--retries` launches). Chunk jobs skip chunks that already have an `.ok`
-   marker, so only the chunk in progress is lost after a crash.
+   `sightlines`) in **one Workbench launch**, one load of the world, in the order given. Every job runs even after one
+   fails; the plugin exits with the first failure's code.
+4. After each launch, read every job's `<job>.status.json` and check it against the status contract below. Jobs that
+   succeeded are recorded; the rest are relaunched together (up to `--retries` launches). Chunk jobs skip chunks that
+   already have an `.ok` marker, so only the chunk in progress is lost after a crash.
 5. **Run `satellite`** and **`foliage`**, if asked for, in the game itself (separate launches; see
    [satellite-and-foliage.md](satellite-and-foliage.md)).
 6. Print `done`, or `FAILED: <jobs>  (rerun the same command to resume)` and exit 1.
 
-Explicit job lists run in the order supplied; put `probe` first when needed. A `partial` status (for example from
-`--max-chunks`) counts as success, not proof of whole-map coverage. Changing sampling settings does not invalidate
-old `.ok` markers. Use a separate export for different grid/settings instead of mixing incompatible chunks.
+Explicit job lists run in the order supplied; put `probe` first when needed. Changing sampling settings does not
+invalidate old `.ok` markers. Use a separate export for different grid/settings instead of mixing incompatible chunks.
 
-Default jobs: `probe,mapdata,roads,names,entities,terrain,surface`. `sightlines`, `satellite`, `foliage`,
-`foliagetrace`, `conflict`, `ballistics` and `mortar_tables` are accepted by `--jobs` but are not in the default list.
+Default jobs: `probe,mapdata,roads,names,entities,terrain,surface`. `sightlines`, `satellite`, `foliage`, `conflict`,
+`ballistics` and `mortar_tables` are accepted by `--jobs` but are not in the default list. `foliagetrace` is a
+research job: `--jobs foliagetrace` still runs it, but it is in no job list shown to users.
+
+### Status
+
+Every job, in Workbench and in the game, ends by writing `<job>.status.json` in the run folder:
+`{"job", "result", "made", "skipped", "remaining", "items", "reason", ...}`. One contract for all of them
+(`rmtlib/workbench.py` `succeeded`, used by `rmt.py`, the GUI and the website producers):
+
+| `result` | means | counts as success |
+|---|---|---|
+| `done` | the outputs exist, are not empty, and hold the rows the job claims | yes, if its outputs are on disk and not empty |
+| `partial` | a declared incomplete output that is still usable; `remaining` (> 0) says how much is missing, `reason` why | yes, if `remaining` > 0 and its outputs are on disk; a `partial` with `remaining` 0 is not |
+| `failed` | do not bake it; the job runs again next time; `reason` says why | no |
+
+A missing status, a status that cannot be read, or a missing or empty output is not success either. A setup failure
+(no plan, no output folder, a file that would not open, a spawn that did not happen) always writes `failed` with a
+reason, never `done`. Examples: `mapdata` is `failed` unless both BI exports worked; `roads` with no `RoadEntity` is
+`failed` (a renamed class looks exactly like that), not an empty success; a short `sightlines` sample is `partial`
+with the missing line count; `mortar_tables` skips a bad page, lists it in `bad_pages`, and is `partial` if any page
+worked and `failed` if none did; `--max-chunks` leaves a chunk job `partial` (not proof of whole-map coverage).
+The game-side jobs write their status at the run root (`<rmtOut>/<job>.status.json`, `RMT_Status.c`), where the
+runner watches for it; the blast test's status stays there too, next to the other jobs' statuses.
 
 ### Supervision
 
@@ -97,7 +119,16 @@ Default step 1 m (501 x 501 per 500 m chunk). Arland yields about 20 million sam
 Rays over every spot an object covers, for roofs, canopy and bullet stops (the slowest job). Output:
 `surface/s_<tx>_<tz>.csv` plus `.ok`. Header `x0,z0,step,cols,rows`, then sparse lines `col,row,top,bottom,kind,cover`
 with heights in decimetres above the ground; `kind` 1 building, 2 other solid, 3 vegetation. Cells not listed are
-open ground or water. Default step 0.5 m.
+open ground or water. Default step 0.5 m. What a ray hits is classified by its prefab folder as well as its class: any
+tree or bush (`/Vegetation/Tree/`, `/Vegetation/Bush/`, of any class) is vegetation and gets a canopy underside, not a
+solid column from the ground; houses, halls and towers in the game's building folders are buildings whatever their
+class; the sea, lakes, rivers and the water generator prefabs are water. Every class that ended up as kind 2 is listed
+in `surface/kind2_classes.csv` (`class,prefab,hits`). The cells are marked from every object whose own box overlaps the
+chunk, however far outside it its origin is (`RMT_Context.QueryOverlapping`). Left out on purpose
+(`RMT_Context.Skippable`): decals, lights, probes, spawn points, editor icons, roads (the roads job has them),
+`PowerlineEntity` (the cables; the poles are kept and the lines come from `mapdata`), the terrain and water. No object
+is dropped for its size: long walls, bridges and sea walls are kept (the old 400 m cap is gone). The terrain job
+refuses a `-rmtStep` that does not divide the tile (its chunks overlap by one sample, exact only then).
 
 ### `sightlines`
 The accuracy check for the line of sight: 20,000 random sight lines fired by the engine itself, which `rmt.py check`
@@ -197,6 +228,9 @@ Estimated time on Everon: the satellite capture is about 1,100 shots, roughly 1 
 ### `mortar_tables`
 
 Samples native BallisticTable configurations from a CSV plan (`-rmtMortarPlan=<profile-relative path>`),
-writing `mortar-tables.csv` and `mortar_tables.status.json`. Use `webdata.py mortar` or Website data so shell,
+writing `mortar_tables/tables.csv` (`id,range,elevation,time,delevation`) and `mortar_tables.status.json`. The file is
+the high register only: angles of 45-85 degrees (the tubes' `LimitsVert 45 85`). `delevation` is the change for 100 m
+(the 50 m forward difference, doubled: the website's `delev_mil_per_100m`); it is left empty, never 0, where there is no
+sample 50 m on (the end of a table). Use `webdata.py mortar` or Website data so shell,
 charge and inherited-page resolution supplies the required plan and validates complete output. This is a
 Workbench job, not a live-fire dispersion measurement. See [website-data.md](website-data.md).

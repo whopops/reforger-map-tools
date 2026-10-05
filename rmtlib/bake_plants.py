@@ -44,11 +44,19 @@ LIGHT_CELL = 10
 
 
 def kind_profiles(shots_csv, prefabs):
-    """h, hw[BINS], k[BINS] per prefab from the close-up measurements (same method as the field map's model)."""
+    """h, hw[BINS], k[BINS] per prefab from the close-up measurements. Per tenth of the height: hw is half the mean
+    measured width, and k keeps the plant's blocking cross-section: the mean of cover x width (the metres of the
+    slice's width that block, per metre of height) spread over the disc of radius hw that the light grid fills
+    (foliage_layer), k = mean(cover x width) / (pi hw^2). A light cell holding many plants then blocks a sight line by
+    the sum of their blocked cross-sections per area, which is what a random line through them meets (Beer-Lambert for
+    scattered obstacles), whatever the inside of each crown looks like. It is not the slab value
+    -ln(1 - cover) / width, which made a crown with a hole as dense as a solid one, nor the stored per-slice k (a
+    property of one plant seen alone, not of a cell of them). Only cover and width_m are read, so the photographs and
+    the mesh library give the same k for the same picture."""
     shots = collections.defaultdict(list)
     with open(shots_csv, encoding="utf8", newline="") as f:
         for r in csv.DictReader(f):
-            if r["band"] == "near":
+            if r.get("band", "near") == "near":   # files from before the band column are close-ups
                 shots[r["id"]].append(r)
     by_prefab = collections.defaultdict(list)
     for s in shots.values():
@@ -61,23 +69,21 @@ def kind_profiles(shots_csv, prefabs):
         for s in by_prefab[prefab]:
             tops.append(max([float(x["slice_m"]) + step for x in s if float(x["cover"]) > 0.02] or [step]))
             for x in s:
-                w = float(x["width_m"])
-                slices[float(x["slice_m"])].append((float(x["cover"]) * w, w))
+                slices[float(x["slice_m"])].append((float(x["cover"]), float(x["width_m"])))
         h = statistics.median(tops) if tops else step
         hw, ks = [], []
         for j in range(BINS):
             lo, hi = j * h / BINS, (j + 1) * h / BINS
             sel = [y for y in slices if lo <= y + step / 2 < hi] or [math.floor((lo + hi) / 2 / step) * step]
-            pairs = [p for y in sel for p in slices.get(y, [])]
-            w = float(np.mean([p[1] for p in pairs])) if pairs else 0
-            blocked = float(np.mean([p[0] for p in pairs])) if pairs else 0
+            rows = [p for y in sel for p in slices.get(y, [])]
+            w = float(np.mean([p[1] for p in rows])) if rows else 0
             if w < 0.05:
                 hw.append(0)
                 ks.append(0)
                 continue
-            cover = min(0.99, blocked / w)
+            blocked = float(np.mean([p[0] * p[1] for p in rows]))
             hw.append(round(w / 2, 3))
-            ks.append(round(-math.log(1 - cover) / w, 4))
+            ks.append(round(blocked / (math.pi * (w / 2) ** 2), 4))
         out.append({"h": round(h, 2), "hw": hw, "k": ks})
     return out
 

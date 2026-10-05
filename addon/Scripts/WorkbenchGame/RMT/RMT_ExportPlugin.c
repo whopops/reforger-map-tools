@@ -2,8 +2,10 @@
 //   -wbModule=WorldEditor -plugin=RMT_ExportPlugin -rmtJob=<job>[,<job>...] -rmtOut=$profile:<folder>
 //   [-rmtWorld=<world .ent>] [-rmtTile=500] [-rmtStep=<m>] [-rmtRegion=tx0,tz0,tx1,tz1] [-rmtMaxChunks=N]
 // Jobs: worlds (alone), or any of probe, mapdata, roads, names, entities, terrain, surface, sightlines, foliagetrace, ballistics, conflict - run one after
-// another on a single load of the world. Each writes <job>.status.json when it finishes, so after a crash rmt.py
-// relaunches with only the jobs still to do (and the chunk jobs skip their finished chunks).
+// another on a single load of the world, every one of them even after one fails (the exit code is the first failure's).
+// Each writes <job>.status.json when it finishes, so after a crash rmt.py relaunches with only the jobs still to do (and
+// the chunk jobs skip their finished chunks). foliagetrace and materials are research only (RMT_FoliageTrace.c,
+// RMT_MaterialsJob.c).
 // The satellite pictures are taken in the game, not here (command-line Workbench does not draw the world).
 // Lines meant for rmt.py start with "RMT|" in console.log. Exit codes: 0 done, 1 a job failed, 2 bad arguments,
 // 3 world did not load.
@@ -48,7 +50,8 @@ class RMT_ExportPlugin : WorkbenchPlugin
 		m_Ctx.m_sJob.Split(",", jobs, true);
 		foreach (string job : jobs)
 		{
-			if (job != "probe" && job != "mapdata" && job != "roads" && job != "names" && job != "entities" && job != "terrain" && job != "surface" && job != "sightlines" && job != "foliagetrace" && job != "ballistics" && job != "conflict" && job != "mortar_tables")
+			// foliagetrace is a research job (not in the pipeline or the user-facing job lists): see RMT_FoliageTrace.c
+			if (job != "probe" && job != "mapdata" && job != "roads" && job != "names" && job != "entities" && job != "terrain" && job != "surface" && job != "sightlines" && job != "foliagetrace" && job != "ballistics" && job != "conflict" && job != "mortar_tables" && job != "materials")
 			{
 				Finish(2, "unknown job " + job);
 				return;
@@ -59,16 +62,25 @@ class RMT_ExportPlugin : WorkbenchPlugin
 			Finish(3, "world did not load: " + m_Ctx.m_sWorld);
 			return;
 		}
+		// every job runs, even after one fails (each writes its own status; rmt.py relaunches only the unfinished ones);
+		// the exit code is the first failure's
+		int first = 0;
+		string failed = "";
 		foreach (string j : jobs)
 		{
 			RMT_Context.Say("begin|" + j);
 			int code = RunJob(j);
 			RMT_Context.Say(string.Format("end|%1|%2", j, code));
-			if (code != 0)
+			if (code != 0 && first == 0)
 			{
-				Finish(code, j);
-				return;
+				first = code;
+				failed = j;
 			}
+		}
+		if (first != 0)
+		{
+			Finish(first, failed);
+			return;
 		}
 		Finish(0, m_Ctx.m_sJob);
 	}
@@ -119,6 +131,11 @@ class RMT_ExportPlugin : WorkbenchPlugin
 			ref RMT_BallisticsJob bal = new RMT_BallisticsJob(m_Ctx);
 			return bal.Run();
 		}
+		if (job == "materials")
+		{
+			ref RMT_MaterialsJob mats = new RMT_MaterialsJob(m_Ctx);
+			return mats.Run();
+		}
 		if (job == "foliagetrace")
 		{
 			ref RMT_FoliageTraceJob ft = new RMT_FoliageTraceJob(m_Ctx);
@@ -153,17 +170,19 @@ class RMT_ExportPlugin : WorkbenchPlugin
 			ras = exporter.ExportRasterization(dir, loaded, 2.5, 1.2, 500.0, 60.0, -50.0, 0.5, 1.8, true, 1.25, 1.0);
 		RMT_Context.Say(string.Format("mapdata|raster|%1", typename.EnumToString(DataExportErrorType, ras)));
 
+		// both exports or nothing: the bakers need the geometry and the raster together
 		int items = 0;
 		if (geo == DataExportErrorType.DataExportErrorNone)
 			items++;
 		if (ras == DataExportErrorType.DataExportErrorNone)
 			items++;
-		string result = "done";
-		if (items == 0)
-			result = "failed";
-		m_Ctx.WriteStatus("mapdata", result, items, 0, 0, items, 0);
-		if (items == 0)
+		if (items < 2)
+		{
+			string why = string.Format("geometry %1, raster %2", typename.EnumToString(DataExportErrorType, geo), typename.EnumToString(DataExportErrorType, ras));
+			m_Ctx.WriteStatus("mapdata", "failed", items, 0, 2 - items, items, 0, why);
 			return 1;
+		}
+		m_Ctx.WriteStatus("mapdata", "done", items, 0, 0, items, 0);
 		return 0;
 	}
 

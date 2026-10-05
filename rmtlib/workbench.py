@@ -99,8 +99,38 @@ def restore_video_settings(game_profile, log=print):
 def read_status(path):
     if not os.path.isfile(path):
         return None
-    with open(path, encoding="utf8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf8") as f:
+            return json.load(f)
+    except ValueError:
+        return None  # a half-written status is no status
+
+
+def _has_content(path):
+    if os.path.isfile(path):
+        return os.path.getsize(path) > 0
+    if os.path.isdir(path):
+        return any(_has_content(os.path.join(path, name)) for name in os.listdir(path))
+    return False
+
+
+def succeeded(status, outputs=()):
+    """The status contract every job's <job>.status.json follows (see docs/export-jobs.md, "Status"):
+    done     the outputs exist, are not empty, and hold the rows the job claims
+    partial  a declared incomplete output that is still usable, with an honest remaining count (> 0)
+    failed   do not bake it, and do not skip the job next time
+    So a missing status, failed, any other result, a partial that says nothing remains (that is done, or a bug), or a
+    named output that is missing or empty is not success. outputs: files or folders (a folder must hold a non-empty
+    file)."""
+    if not status:
+        return False
+    result = status.get("result")
+    if result == "partial":
+        if not (status.get("remaining") or 0) > 0:
+            return False
+    elif result != "done":
+        return False
+    return all(_has_content(p) for p in outputs)
 
 
 class Runner:

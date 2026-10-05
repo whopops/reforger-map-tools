@@ -122,26 +122,38 @@ def mortar_plan(catalog):
     return plan, physics
 
 
-def bake_mortar(plan, raw):
+def bake_mortar(plan, raw, skip=()):
+    """tables.csv (the engine's high register only, 45-85 degrees) to the website's mortar-tables document. The job
+    leaves delevation empty where it had no sample 50 m further on; only the last row of a table may be like that, and
+    it takes the row before's value, as the paper table does. Pages in skip (the job's bad_pages ids) are left out
+    and listed under "missing"."""
     grouped = {}
     with Path(raw).open(newline='', encoding='utf8') as file:
         for row in csv.DictReader(file):
-            grouped.setdefault(row['id'], []).append([float(row[k]) for k in ('range', 'elevation', 'time', 'delevation')])
-    weapons = {}
+            delev = row['delevation'].strip()
+            grouped.setdefault(row['id'], []).append([float(row['range']), float(row['elevation']), float(row['time']),
+                                                      float(delev) if delev else None])
+    weapons, missing = {}, []
     for page in plan:
-        table = sorted(grouped.get(page['id'], []))
-        if len(table) < 2 or any(not all(math.isfinite(v) for v in r) or r[2] <= 0 for r in table):
+        if page['id'] in skip:
+            missing.append(page['id'])
+            continue
+        table = sorted(grouped.get(page['id'], []), key=lambda r: r[0])
+        # (files from before the empty cell had a 0 there instead)
+        if len(table) >= 2 and (table[-1][3] is None or table[-1][3] <= 0):
+            table[-1][3] = table[-2][3]
+        if len(table) < 2 or any(None in r or not all(math.isfinite(v) for v in r) or r[2] <= 0 for r in table):
             raise ValueError(f'Missing/invalid mortar rows: {page["weapon"]} / {page["shell"]} / ring {page["ring"]}')
         if len({r[0] for r in table}) != len(table):
             raise ValueError('Duplicate mortar range rows')
-        # Last half-step may be outside the engine table; use previous derivative, as the paper table does.
-        if table[-1][3] <= 0:
-            table[-1][3] = table[-2][3]
         weapon = weapons.setdefault(page['weapon'], {'label': 'M252 81mm (US)' if page['weapon'] == 'M252' else '2B14 82mm (USSR)',
                                                     'milsPerCircle': page['mils'], 'shells': {}})
         weapon['shells'].setdefault(page['shell'], {})[str(page['ring'])] = {'dispersion': page['dispersion'], 'table': table}
-    return {'source': 'Engine BallisticTable lookup; dispersion is the current game config standard value, not measured 90% spread.',
-            'columns': ['range_m', 'elev_mil', 'time_s', 'delev_mil_per_100m'], 'weapons': weapons}
+    doc = {'source': 'Engine BallisticTable lookup, high register (45-85 degrees) only; dispersion is the current game config standard value, not measured 90% spread.',
+           'columns': ['range_m', 'elev_mil', 'time_s', 'delev_mil_per_100m'], 'weapons': weapons}
+    if missing:
+        doc['missing'] = missing
+    return doc
 
 
 def mortar(catalog, output, launch=True):
@@ -161,10 +173,15 @@ def mortar(catalog, output, launch=True):
     resource, _, _ = Exporter(catalog.install).resolve('EmptyEden')
     code, _, _ = Runner(catalog.install).run('mortar_tables', relative, resource,
                                             args=[f'-rmtMortarPlan={relative}/plan.csv'], stall=300)
+    from .workbench import succeeded
     status = read_status(str(profile/'mortar_tables.status.json'))
-    if code != 0 or not status or status.get('result') != 'done':
-        raise ValueError('Mortar table lookup did not finish; raw plan/results preserved in '+str(profile))
-    doc = bake_mortar(plan, profile/'mortar_tables'/'tables.csv')
+    tables = profile/'mortar_tables'/'tables.csv'
+    if not succeeded(status, [str(tables)]):
+        raise ValueError('Mortar table lookup did not finish ('+str((status or {}).get('reason') or 'no status')+'); raw plan/results preserved in '+str(profile))
+    skip = {b.split(':')[0] for b in status.get('bad_pages', [])}
+    if skip:
+        print(f"mortar tables: {len(skip)} page(s) skipped by the engine lookup: {', '.join(sorted(skip))}")
+    doc = bake_mortar(plan, tables, skip)
     doc['gameBuild'] = catalog.install.game_build
     write_json(output/'mortar-tables.json', doc)
     return str(output.resolve())

@@ -20,10 +20,18 @@
 //   record only how the round left the muzzle and remove it straight away (tof -1), 1 (or left out) to follow it down.
 //   Lines for the same gun in the same place reuse it.
 // traj.csv: id,round,t,x,y,z,vx,vy,vz: every frame of every round followed down (t from when it was fired)
-// shots.csv: id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target
+// shots.csv: id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target,ring,coef,end
 //   lay_az, lay_el: where the barrel pointed when it fired (degrees); lay_tries: corrections it took; m: the muzzle;
 //   b: the barrel's direction (unit vector); v0: the shell's velocity when first seen, v0dt seconds after it was fired
-//   (gravity has acted that long); x,y,z: where it landed; tof: seconds in the air.
+//   (gravity has acted that long); x,y,z: where it landed; tof: seconds in the air; ring, coef: the charge ring
+//   configuration actually on the shell when it was loaded (rings, speed coefficient), read back from the shell.
+//   end: ground (x,y,z where it met the terrain), in_air (removed too high to reach the ground in IMPACT_T s: x,y,z is
+//   its last known point), lost (still flying after LOST_T s: where it was then), launch (track 0: only how it left
+//   the muzzle), lay_failed (the barrel could not be laid within LAY_OK in LAY_MAX tries: NOT fired; lay_az/lay_el are
+//   where it pointed, the rest is empty). Only end=ground rows are impacts.
+// Charge: SCR_MortarShellGadgetComponent.SetChargeRingConfig selects ONE configuration (it sets the shell's bullet
+// coefficient to that configuration's, replacing the default; rings do not stack). The first configuration with the
+// planned number of rings is selected and read back.
 
 class RMT_GunTestEntityClass : GenericEntityClass
 {
@@ -40,6 +48,7 @@ class RMT_GunTestEntity : GenericEntity
 	protected int m_iRound;
 	protected int m_iState;              // 0 settle after load, 7 let the wind settle, 1 place the mortar, 2 lay, 3 fire, 4 in flight, 5 gap, 6 done
 	protected float m_fTimer;
+	protected bool m_bPreloading;       // waiting for the world round the first spot to stream in
 	protected int m_iDone;
 	protected int m_iLost;
 
@@ -76,6 +85,14 @@ class RMT_GunTestEntity : GenericEntity
 	protected float m_fT;
 
 	const float LAY_WAIT = 0.5;          // s after turning the gun before reading the barrel again
+	const float IMPACT_T = 0.1;          // s past the last frame a round is carried on to find the ground
+	const float LOST_T = 120;            // s a round is followed
+	protected bool m_bLayFailed;
+	protected int m_iLayFailed;
+	protected int m_iInAir;
+	protected float m_fRing = -1;        // the charge actually on the shell
+	protected float m_fCoef = -1;
+	protected string m_sFailReason;
 	const float LAY_OK = 0.003;          // degrees: about 0.05 mil, both axes
 	const int LAY_MAX = 15;
 
@@ -107,7 +124,7 @@ class RMT_GunTestEntity : GenericEntity
 		FileHandle f = FileIO.OpenFile(m_sDir + "/plan.csv", FileMode.READ);
 		if (!f)
 		{
-			Say("gun|error|no plan " + m_sDir + "/plan.csv");
+			m_sFailReason = "no plan " + m_sDir + "/plan.csv";
 			return false;
 		}
 		string line;
@@ -125,10 +142,18 @@ class RMT_GunTestEntity : GenericEntity
 				m_aPlan.Insert(cols);
 		}
 		f.Close();
+		if (m_aPlan.IsEmpty())
+		{
+			m_sFailReason = "the plan has no aims";
+			return false;
+		}
 		m_Out = FileIO.OpenFile(m_sDir + "/shots.csv", FileMode.WRITE);
 		if (!m_Out)
+		{
+			m_sFailReason = "could not open " + m_sDir + "/shots.csv";
 			return false;
-		m_Out.WriteLine("id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target");
+		}
+		m_Out.WriteLine("id,round,lay_az,lay_el,lay_tries,mx,my,mz,bx,by,bz,v0x,v0y,v0z,v0dt,x,y,z,tof,ground_target,ring,coef,end");
 		m_Trace = FileIO.OpenFile(m_sDir + "/traj.csv", FileMode.WRITE);
 		if (m_Trace)
 			m_Trace.WriteLine("id,round,t,x,y,z,vx,vy,vz");
@@ -284,10 +309,14 @@ class RMT_GunTestEntity : GenericEntity
 		float eEl = el - wantEl;
 		m_fLayAz = az;
 		m_fLayEl = el;
-		if ((Math.AbsFloat(eAz) < LAY_OK && Math.AbsFloat(eEl) < LAY_OK) || m_iTries >= LAY_MAX)
+		m_bLayFailed = false;
+		if (Math.AbsFloat(eAz) < LAY_OK && Math.AbsFloat(eEl) < LAY_OK)
+			return true;
+		if (m_iTries >= LAY_MAX)
 		{
-			if (m_iTries >= LAY_MAX)
-				Say(string.Format("gun|lay|gave up|off by %1 deg az, %2 deg el", eAz, eEl));
+			// not fired: a round from a bad lay is not a round from the planned lay
+			Say(string.Format("gun|lay|gave up|off by %1 deg az, %2 deg el", eAz, eEl));
+			m_bLayFailed = true;
 			return true;
 		}
 		m_aYawCmd.Insert(m_fYaw);
@@ -325,19 +354,30 @@ class RMT_GunTestEntity : GenericEntity
 		SCR_MortarShellGadgetComponent gadget = SCR_MortarShellGadgetComponent.Cast(m_Shell.FindComponent(SCR_MortarShellGadgetComponent));
 		int rings = row[3].ToInt();
 		bool charged = false;
+		m_fRing = -1;
+		m_fCoef = -1;
 		if (gadget)
 		{
+			// one configuration: the first with that many rings (SetChargeRingConfig replaces, it does not add)
 			for (int i = 0; i < gadget.GetNumberOfChargeRingConfigurations(); i++)
 			{
 				if (Math.Round(gadget.GetChargeRingConfig(i)[0]) == rings)
 				{
 					gadget.SetChargeRingConfig(i, true, false);
 					charged = true;
+					break;
 				}
 			}
+			vector applied = gadget.GetCurentChargeRingConfig();
+			m_fRing = applied[0];
+			m_fCoef = applied[1];
 		}
-		if (!charged)
-			Say(string.Format("gun|warn|no %1-ring charge on this shell", rings));
+		if (!charged || Math.Round(m_fRing) != rings)
+		{
+			Say(string.Format("gun|error|no %1-ring charge on this shell (it has %2 rings)", rings, m_fRing));
+			delete m_Shell;
+			return false;
+		}
 		// into the barrel (the weapon's attachment storage, where a crew's drop puts it). The weapon may fire the moment
 		// the shell is in, so the fired-callback's record is cleared first.
 		m_Fired = null;
@@ -361,29 +401,46 @@ class RMT_GunTestEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Land(array<string> row, vector p)
+	protected void Land(array<string> row, vector p, string end)
 	{
 		float gt = GetWorld().GetSurfaceY(row[9].ToFloat(), row[10].ToFloat());
 		string a = string.Format("%1,%2,%3,%4,%5,", row[0], m_iRound, F(m_fLayAz), F(m_fLayEl), m_iTries);
 		string b = string.Format("%1,%2,%3,%4,%5,%6,", F(m_vMuzzle[0]), F(m_vMuzzle[1]), F(m_vMuzzle[2]), F(m_vBarrel[0]), F(m_vBarrel[1]), F(m_vBarrel[2]));
 		string c = string.Format("%1,%2,%3,%4,", F(m_vV0[0]), F(m_vV0[1]), F(m_vV0[2]), F(m_fV0dt));
-		string d = string.Format("%1,%2,%3,%4,%5", F(p[0]), F(p[1]), F(p[2]), F(m_fT), F(gt));
-		m_Out.WriteLine(a + b + c + d);
+		string d = string.Format("%1,%2,%3,%4,%5,", F(p[0]), F(p[1]), F(p[2]), F(m_fT), F(gt));
+		m_Out.WriteLine(a + b + c + d + string.Format("%1,%2,%3", m_fRing, F(m_fCoef), end));
 		m_iDone++;
+		if (end == "in_air")
+			m_iInAir++;
 		if (m_fT >= 0)
-			Say(string.Format("gun|landed|%1|%2", row[0], m_iRound));
+			Say(string.Format("gun|landed|%1|%2|%3", row[0], m_iRound, end));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// where the shell met the ground: from its last known point, along its last velocity, to the terrain
-	protected vector Impact()
+	// A lay that never got within LAY_OK: the row says where the barrel pointed, and that nothing was fired.
+	protected void LayFailed(array<string> row)
+	{
+		string a = string.Format("%1,%2,%3,%4,%5,", row[0], m_iRound, F(m_fLayAz), F(m_fLayEl), m_iTries);
+		m_Out.WriteLine(a + ",,,,,,,,,,,,,,,,,lay_failed");
+		m_iLayFailed++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// where the shell met the ground: from its last known point, along its last velocity, to the terrain, at most
+	// IMPACT_T s on; past that it ended in the air and the last known point is written
+	protected void LandOrAir(array<string> row)
 	{
 		vector p = m_vLast;
-		for (int i = 0; i < 4000 && p[1] > GetWorld().GetSurfaceY(p[0], p[2]); i++)
+		for (float t = 0; t <= IMPACT_T; t += 0.0025)
 		{
+			if (p[1] <= GetWorld().GetSurfaceY(p[0], p[2]))
+			{
+				Land(row, p, "ground");
+				return;
+			}
 			p = p + m_vVel * 0.0025;
 		}
-		return p;
+		Land(row, m_vLast, "in_air");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -399,15 +456,19 @@ class RMT_GunTestEntity : GenericEntity
 			m_Out.Close();
 		if (m_Trace)
 			m_Trace.Close();
-		Say(string.Format("gun|done|landed=%1|lost=%2", m_iDone, m_iLost));
-		string outDir;
-		System.GetCLIParam("rmtOut", outDir);
-		FileHandle f = FileIO.OpenFile(outDir + "/guntest.status.json", FileMode.WRITE);
-		if (f)
+		Say(string.Format("gun|done|rows=%1|lost=%2|lay_failed=%3|in_air=%4", m_iDone, m_iLost, m_iLayFailed, m_iInAir));
+		string result = "done";
+		string reason = m_sFailReason;
+		if (reason != "" || m_iDone == 0)
 		{
-			f.WriteLine(string.Format("{\"job\": \"guntest\", \"result\": \"done\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_iDone, m_iLost, m_iDone));
-			f.Close();
+			result = "failed";
+			if (reason == "")
+				reason = "no round was fired";
 		}
+		else if (m_iLost + m_iLayFailed > 0)
+			reason = string.Format("%1 round(s) not fired or not followed, %2 not fired for a failed lay", m_iLost, m_iLayFailed);
+		string extra = string.Format("\"lay_failed\": %1, \"in_air\": %2, ", m_iLayFailed, m_iInAir);
+		RMT_Status.Write("guntest", result, m_iDone, m_iLost + m_iLayFailed, 0, m_iDone, reason, extra);
 		GetGame().RequestClose();
 	}
 
@@ -443,9 +504,22 @@ class RMT_GunTestEntity : GenericEntity
 				Finish();
 				return;
 			}
+			// nothing is measured until the world round the first spot has finished streaming
+			float px = m_aPlan[0][4].ToFloat();
+			float pz = m_aPlan[0][5].ToFloat();
+			GetGame().BeginPreload(GetWorld(), Vector(px, GetWorld().GetSurfaceY(px, pz), pz), 500);
+			m_bPreloading = true;
 			m_iState = 7;
 			m_fTimer = 0;
 			return;
+		}
+		if (m_bPreloading)
+		{
+			if (!GetGame().IsPreloadFinished() && m_fTimer < 120)
+				return;
+			m_bPreloading = false;
+			Say(string.Format("gun|streamed|%1|after=%2 s", GetGame().IsPreloadFinished(), m_fTimer));
+			m_fTimer = 0;
 		}
 		if (m_iState == 7)
 		{
@@ -501,6 +575,12 @@ class RMT_GunTestEntity : GenericEntity
 			m_fTimer = 0;
 			if (!LayStep(row))
 				return;
+			if (m_bLayFailed)
+			{
+				LayFailed(row);
+				NextRound(row);
+				return;
+			}
 			if (!Load(row))
 			{
 				m_iLost++;
@@ -537,9 +617,9 @@ class RMT_GunTestEntity : GenericEntity
 			m_fT += timeSlice;
 			if (!m_Fired)
 			{
-				// it went off and was removed: it landed between the last frame and this one
+				// it went off and was removed: it landed between the last frame and this one, or burst in the air
 				if (m_bSeen)
-					Land(row, Impact());
+					LandOrAir(row);
 				else
 					m_iLost++;
 				NextRound(row);
@@ -558,7 +638,7 @@ class RMT_GunTestEntity : GenericEntity
 				if (row.Count() > 12 && row[12].ToInt() == 0)
 				{
 					m_fT = -1;
-					Land(row, p);
+					Land(row, p, "launch");
 					delete m_Fired;
 					NextRound(row);
 					return;
@@ -572,16 +652,17 @@ class RMT_GunTestEntity : GenericEntity
 			}
 			if (m_fT > 0.5 && p[1] <= GetWorld().GetSurfaceY(p[0], p[2]) + 0.2)
 			{
-				Land(row, Impact());
+				LandOrAir(row);
 				delete m_Fired;
 				NextRound(row);
 				return;
 			}
-			if (m_fT > 120)
+			if (m_fT > LOST_T)
 			{
+				// still flying: where it was is written, marked lost, not dropped
 				Say(string.Format("gun|lost|%1|%2", row[0], m_iRound));
+				Land(row, p, "lost");
 				delete m_Fired;
-				m_iLost++;
 				NextRound(row);
 			}
 		}

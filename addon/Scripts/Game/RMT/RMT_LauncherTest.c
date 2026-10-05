@@ -26,7 +26,10 @@
 //   st: GetSightsTransform's forward axis (world); sr, sf: the rear and front sight points (world); z: the forward axis
 //   of the weapon's GetCurrentSightsZeroingTransform (weapon space); zero: GetCurrentSightsZeroing (the range set);
 //   v0: the rocket's velocity when first seen, v0dt s after firing; x,y,z: where it went off; tof: seconds flown
-//   (-1 for a sights-only line).
+//   (-1 for a sights-only line); end: ground (x,y,z where it met the terrain), in_air (removed too high to reach the
+//   ground: x,y,z is its last known point), lost (still flying after LOST_T s: x,y,z is where it was then), sights.
+// If the planned launcher cannot be put in the soldier's hands, nothing is fired from that soldier and the job ends
+// failed: a shot from the soldier's own weapon is never recorded as the planned one.
 
 class RMT_LauncherTestEntityClass : GenericEntityClass
 {
@@ -43,10 +46,14 @@ class RMT_LauncherTestEntity : GenericEntity
 	protected int m_iRound;
 	protected int m_iState;              // 0 settle after load, 1 spawn, 2 equip, 3 aim, 4 fire, 5 in flight, 6 done, 7 wind settle
 	protected float m_fTimer;
+	protected bool m_bPreloading;       // waiting for the world round the first spot to stream in
 	protected float m_fStep;
 	protected int m_iDone;
 	protected int m_iLost;
 	protected bool m_bSelectionFailed; // expected projectile identity from optional plan column
+	protected string m_sFailReason;
+	const float LOST_T = 15;             // s a rocket is followed
+	const float IMPACT_T = 0.1;          // s past the last frame a rocket is carried on to find the ground
 
 	protected BaseWeatherManagerEntity m_Weather;
 	protected float m_fWindS = -1;
@@ -120,7 +127,7 @@ class RMT_LauncherTestEntity : GenericEntity
 		FileHandle f = FileIO.OpenFile(m_sDir + "/plan.csv", FileMode.READ);
 		if (!f)
 		{
-			Say("launcher|error|no plan " + m_sDir + "/plan.csv");
+			m_sFailReason = "no plan " + m_sDir + "/plan.csv";
 			return false;
 		}
 		string line;
@@ -138,11 +145,19 @@ class RMT_LauncherTestEntity : GenericEntity
 				m_aPlan.Insert(cols);
 		}
 		f.Close();
+		if (m_aPlan.IsEmpty())
+		{
+			m_sFailReason = "the plan has no aims";
+			return false;
+		}
 		m_Out = FileIO.OpenFile(m_sDir + "/shots.csv", FileMode.WRITE);
 		m_Trace = FileIO.OpenFile(m_sDir + "/traj.csv", FileMode.WRITE);
 		if (!m_Out || !m_Trace)
+		{
+			m_sFailReason = "could not open shots.csv or traj.csv in " + m_sDir;
 			return false;
-		m_Out.WriteLine("id,round,zero,tries,mx,my,mz,bx,by,bz,sdx,sdy,sdz,stx,sty,stz,srx,sry,srz,sfx,sfy,sfz,zx,zy,zz,v0x,v0y,v0z,v0dt,x,y,z,tof");
+		}
+		m_Out.WriteLine("id,round,zero,tries,mx,my,mz,bx,by,bz,sdx,sdy,sdz,stx,sty,stz,srx,sry,srz,sfx,sfy,sfz,zx,zy,zz,v0x,v0y,v0z,v0dt,x,y,z,tof,end");
 		m_Trace.WriteLine("id,round,t,x,y,z,vx,vy,vz");
 		m_Weather = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(GetWorld()));
 		Say(string.Format("launcher|setup|aims=%1|weather=%2", m_aPlan.Count(), m_Weather != null));
@@ -204,6 +219,7 @@ class RMT_LauncherTestEntity : GenericEntity
 		{
 			// put the planned launcher (the RPG-7 with the PGO-7) in the slot the soldier's own launcher is in
 			Resource lres = Resource.Load(row[2]);
+			bool swapped = false;
 			array<WeaponSlotComponent> slots = {};
 			m_Weapons.GetWeaponsSlots(slots);
 			foreach (WeaponSlotComponent slot : slots)
@@ -218,19 +234,33 @@ class RMT_LauncherTestEntity : GenericEntity
 					lp.TransformMode = ETransformMode.WORLD;
 					lp.Transform = mat;
 					IEntity mine = GetGame().SpawnEntityPrefab(lres, GetWorld(), lp);
+					if (!mine)
+						break;
 					IEntity old = m_Weapons.SetSlotWeapon(slot, mine);
+					swapped = slot.GetWeaponEntity() == mine;
+					if (!swapped)
+					{
+						delete mine;
+						break;
+					}
 					if (old && old != mine)
 						delete old;
 					break;
 				}
 			}
+			if (!swapped)
+			{
+				// never fire the soldier's own weapon and record it as the planned one
+				m_sFailReason = string.Format("%1: could not put %2 in the soldier's launcher slot", row[0], row[2]);
+				Say("launcher|error|" + m_sFailReason);
+				return false;
+			}
 		}
-		// STANCECHANGE_TOCROUCH = 2, STANCECHANGE_TOPRONE = 3 (CharacterControllerComponent's own note)
 		int stance = row[11].ToInt();
 		if (stance == 1)
-			m_Ctrl.SetStanceChange(2);
+			m_Ctrl.SetStanceChange(ECharacterStanceChange.STANCECHANGE_TOCROUCH);
 		else if (stance == 2)
-			m_Ctrl.SetStanceChange(3);
+			m_Ctrl.SetStanceChange(ECharacterStanceChange.STANCECHANGE_TOPRONE);
 		return true;
 	}
 
@@ -395,21 +425,30 @@ class RMT_LauncherTestEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Write(array<string> row, string aimRec, vector p)
+	protected void Write(array<string> row, string aimRec, vector p, string end)
 	{
 		string a = string.Format("%1,%2,%3,%4,", row[0], m_iRound, F(m_Launcher.GetCurrentSightsZeroing()), m_iTries);
-		string c = V(m_vV0) + F(m_fV0dt) + "," + V(p) + F(m_fT);
+		string c = V(m_vV0) + F(m_fV0dt) + "," + V(p) + F(m_fT) + "," + end;
 		m_Out.WriteLine(a + aimRec + c);
 		m_iDone++;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected vector Impact()
+	// From the last known point along the last velocity to the terrain, at most IMPACT_T s on: a ground row, or (it
+	// was removed too high to get there) an in_air row at the last known point.
+	protected void WriteEnd(array<string> row)
 	{
 		vector p = m_vLast;
-		for (int i = 0; i < 4000 && p[1] > GetWorld().GetSurfaceY(p[0], p[2]); i++)
+		for (float t = 0; t <= IMPACT_T; t += 0.0025)
+		{
+			if (p[1] <= GetWorld().GetSurfaceY(p[0], p[2]))
+			{
+				Write(row, m_sAimRec, p, "ground");
+				return;
+			}
 			p = p + m_vVel * 0.0025;
-		return p;
+		}
+		Write(row, m_sAimRec, m_vLast, "in_air");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -427,17 +466,19 @@ class RMT_LauncherTestEntity : GenericEntity
 		if (m_Trace)
 			m_Trace.Close();
 		Say(string.Format("launcher|done|shots=%1|lost=%2", m_iDone, m_iLost));
-		string outDir;
-		System.GetCLIParam("rmtOut", outDir);
-		FileHandle f = FileIO.OpenFile(outDir + "/launchertest.status.json", FileMode.WRITE);
-		if (f)
+		string result = "done";
+		string reason = m_sFailReason;
+		if (m_bSelectionFailed && reason == "")
+			reason = "the fired projectile was not the one planned";
+		if (reason != "" || m_iDone == 0)
 		{
-			string result = "done";
-			if (m_bSelectionFailed)
-				result = "failed";
-			f.WriteLine(string.Format("{\"job\": \"launchertest\", \"result\": \"%4\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_iDone, m_iLost, m_iDone, result));
-			f.Close();
+			result = "failed";
+			if (reason == "")
+				reason = "no line was recorded";
 		}
+		else if (m_iLost > 0)
+			reason = string.Format("%1 round(s) not fired", m_iLost);
+		RMT_Status.Write("launchertest", result, m_iDone, m_iLost, 0, m_iDone, reason);
 		GetGame().RequestClose();
 	}
 
@@ -470,15 +511,31 @@ class RMT_LauncherTestEntity : GenericEntity
 				Finish();
 				return;
 			}
+			// nothing is measured until the world round the first spot has finished streaming
+			float px = m_aPlan[0][3].ToFloat();
+			float pz = m_aPlan[0][4].ToFloat();
+			GetGame().BeginPreload(GetWorld(), Vector(px, GetWorld().GetSurfaceY(px, pz), pz), 500);
+			m_bPreloading = true;
 			m_iState = 1;
 			m_fTimer = 0;
 			return;
+		}
+		if (m_bPreloading)
+		{
+			if (!GetGame().IsPreloadFinished() && m_fTimer < 120)
+				return;
+			m_bPreloading = false;
+			Say(string.Format("launcher|streamed|%1|after=%2 s", GetGame().IsPreloadFinished(), m_fTimer));
+			m_fTimer = 0;
 		}
 		if (m_iState == 7)
 		{
 			if (m_fTimer < SETTLE)
 				return;
-			Say(string.Format("launcher|wind|settled=%1 m/s %2 deg", m_Weather.GetWindSpeed(), m_Weather.GetWindDirection()));
+			if (m_Weather)
+				Say(string.Format("launcher|wind|settled=%1 m/s %2 deg", m_Weather.GetWindSpeed(), m_Weather.GetWindDirection()));
+			else
+				Say("launcher|wind|settled (no weather manager: the wind is whatever the world has)");
 			m_iState = 1;
 			m_fTimer = 0;
 			return;
@@ -555,7 +612,7 @@ class RMT_LauncherTestEntity : GenericEntity
 			{
 				// sights only: record where everything points, fire nothing
 				m_fT = -1;
-				Write(row, m_sAimRec, vector.Zero);
+				Write(row, m_sAimRec, vector.Zero, "sights");
 				Say(string.Format("launcher|sights|%1|zero %2", row[0], row[7]));
 				NextRound(row);
 				return;
@@ -590,9 +647,9 @@ class RMT_LauncherTestEntity : GenericEntity
 			m_fT += timeSlice;
 			if (!m_Fired)
 			{
-				// it went off and was removed between the last frame and this one
+				// it went off and was removed between the last frame and this one (or burst in the air)
 				if (m_bSeen)
-					Write(row, m_sAimRec, Impact());
+					WriteEnd(row);
 				else
 					m_iLost++;
 				NextRound(row);
@@ -613,16 +670,17 @@ class RMT_LauncherTestEntity : GenericEntity
 			m_Trace.WriteLine(head + V(p) + string.Format("%1,%2,%3", F(m_vVel[0]), F(m_vVel[1]), F(m_vVel[2])));
 			if (m_fT > 0.3 && p[1] <= GetWorld().GetSurfaceY(p[0], p[2]) + 0.2)
 			{
-				Write(row, m_sAimRec, Impact());
+				WriteEnd(row);
 				delete m_Fired;
 				NextRound(row);
 				return;
 			}
-			if (m_fT > 15)
+			if (m_fT > LOST_T)
 			{
+				// still flying: where it was is recorded, marked lost, not dropped
 				Say(string.Format("launcher|lost|%1|%2", row[0], m_iRound));
+				Write(row, m_sAimRec, p, "lost");
 				delete m_Fired;
-				m_iLost++;
 				NextRound(row);
 			}
 		}

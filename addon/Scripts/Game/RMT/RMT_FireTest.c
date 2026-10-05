@@ -11,8 +11,8 @@
 //                          GAP_MIN-GAP_MAX
 //   -rmtFireTraceDt=<s>    write a traced flight's frames no closer together than this (default 0: every frame); a
 //                          bullet's 10 s at the game's frame rate is otherwise thousands of lines
-//   -rmtFireMaxT=<s>       stop following a round after this long, recording where it is then (default 90; bullet
-//                          tests stop at 10 s, past any range a scope is set for)
+//   -rmtFireMaxT=<s>       stop following a round after this long, recording where it is then as end=cutoff (any
+//                          positive value; default 90; bullet tests stop at 10 s, past any range a scope is set for)
 // plan.csv (header line, then one line per aim): id,prefab,coef,x,z,az,elev,wspeed,wdir,count,tx,tz
 //   prefab: the shell's resource name; coef: its charge ring's speed coefficient; x,z: the mortar (it fires from 1.3 m
 //   above the ground there, where the M252's muzzle is); az: compass bearing in degrees; elev: degrees above the
@@ -22,8 +22,13 @@
 //   An optional 13th column, y: launch from that height above the sea instead of the muzzle above the ground (rocketest.py
 //   flies rockets high over open water this way, and takes their flight from traj.csv).
 // Lines with the same wind should be together: the wind is changed only when no shell is in the air.
-// shots.csv: id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z
+// shots.csv: id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z,end
 //   (v0: the round's velocity just after launch, which includes the game's random speed variation)
+//   end: ground   x,y,z is where it met the terrain (the last frame carried on to the ground, at most IMPACT_T s)
+//        in_air   it was removed (an airburst, or deleted) too high to reach the ground in IMPACT_T s: x,y,z is its last
+//                 known point, not an impact
+//        cutoff   followed for MaxT s and still flying: x,y,z is where it was then
+//   Only end=ground rows are impacts.
 // traj.csv: id,round,t,x,y,z,vx,vy,vz
 
 class RMT_FireTestEntityClass : GenericEntityClass
@@ -57,6 +62,7 @@ class RMT_FireTestEntity : GenericEntity
 	protected int m_iRow;           // plan line being fired
 	protected int m_iRound;         // rounds of it fired so far
 	protected float m_fTimer;
+	protected bool m_bPreloading;       // waiting for the world round the first spot to stream in
 	protected float m_fWindS = -1;
 	protected float m_fWindD = -1;
 	protected float m_fSettle = 60;
@@ -75,6 +81,10 @@ class RMT_FireTestEntity : GenericEntity
 	protected float m_fTraceDt = 0;     // -rmtFireTraceDt
 	protected float m_fMaxT = 90;       // -rmtFireMaxT
 	const int MAX_FLYING = 40;
+	const float IMPACT_T = 0.1;         // s: how far past the last frame a round is carried on to find the ground
+	protected int m_iInAir;
+	protected int m_iCutoff;
+	protected string m_sFailReason;
 
 	//------------------------------------------------------------------------------------------------
 	protected static void Say(string msg)
@@ -113,10 +123,15 @@ class RMT_FireTestEntity : GenericEntity
 		string maxT;
 		if (System.GetCLIParam("rmtFireMaxT", maxT) && maxT != "")
 			m_fMaxT = maxT.ToFloat();
+		if (m_fMaxT <= 0)
+		{
+			m_sFailReason = "-rmtFireMaxT must be positive";
+			return false;
+		}
 		FileHandle f = FileIO.OpenFile(m_sDir + "/plan.csv", FileMode.READ);
 		if (!f)
 		{
-			Say("fire|error|no plan " + m_sDir + "/plan.csv");
+			m_sFailReason = "no plan " + m_sDir + "/plan.csv";
 			return false;
 		}
 		string line;
@@ -134,11 +149,19 @@ class RMT_FireTestEntity : GenericEntity
 				m_aPlan.Insert(cols);
 		}
 		f.Close();
+		if (m_aPlan.IsEmpty())
+		{
+			m_sFailReason = "the plan has no aims";
+			return false;
+		}
 		m_Out = FileIO.OpenFile(m_sDir + "/shots.csv", FileMode.WRITE);
 		m_Trace = FileIO.OpenFile(m_sDir + "/traj.csv", FileMode.WRITE);
 		if (!m_Out || !m_Trace)
+		{
+			m_sFailReason = "could not open shots.csv or traj.csv in " + m_sDir;
 			return false;
-		m_Out.WriteLine("id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z");
+		}
+		m_Out.WriteLine("id,round,x0,y0,z0,x,y,z,tof,ground_mortar,ground_target,wind_speed,wind_dir,v0x,v0y,v0z,end");
 		m_Trace.WriteLine("id,round,t,x,y,z,vx,vy,vz");
 		m_Weather = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(GetWorld()));
 		Say(string.Format("fire|setup|aims=%1|weather=%2|settle=%3", m_aPlan.Count(), m_Weather != null, m_fSettle));
@@ -214,22 +237,27 @@ class RMT_FireTestEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Where the shell met the ground: from its last known point, along its last velocity, to the terrain.
-	protected vector Impact(RMT_FireShot s)
+	// Where the shell met the ground: from its last known point, along its last velocity, to the terrain, at most
+	// IMPACT_T s on. False (and p left at the last known point) if it does not get there: the round ended in the air.
+	protected bool Impact(RMT_FireShot s, out vector p)
 	{
-		vector p = s.m_vLast;
+		vector q = s.m_vLast;
 		vector v = s.m_vVel;
-		for (int i = 0; i < 200; i++)
+		for (float t = 0; t <= IMPACT_T; t += 0.0025)
 		{
-			if (p[1] <= GetWorld().GetSurfaceY(p[0], p[2]))
-				break;
-			p = p + v * 0.005;
+			if (q[1] <= GetWorld().GetSurfaceY(q[0], q[2]))
+			{
+				p = q;
+				return true;
+			}
+			q = q + v * 0.0025;
 		}
-		return p;
+		p = s.m_vLast;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Land(RMT_FireShot s, vector p)
+	protected void Land(RMT_FireShot s, vector p, string end)
 	{
 		array<string> row = m_aPlan[s.m_iPlan];
 		float gm = GetWorld().GetSurfaceY(row[3].ToFloat(), row[4].ToFloat());
@@ -237,9 +265,26 @@ class RMT_FireTestEntity : GenericEntity
 		string a = string.Format("%1,%2,%3,%4,%5,", row[0], s.m_iRound, F(s.m_vStart[0]), F(s.m_vStart[1]), F(s.m_vStart[2]));
 		string b = string.Format("%1,%2,%3,%4,", F(p[0]), F(p[1]), F(p[2]), F(s.m_fT));
 		string c = string.Format("%1,%2,%3,%4,", F(gm), F(gt), F(m_fWindS), F(m_fWindD));
-		string d = string.Format("%1,%2,%3", F(s.m_vV0[0]), F(s.m_vV0[1]), F(s.m_vV0[2]));
+		string d = string.Format("%1,%2,%3,%4", F(s.m_vV0[0]), F(s.m_vV0[1]), F(s.m_vV0[2]), end);
 		m_Out.WriteLine(a + b + c + d);
 		m_iLanded++;
+		if (end == "in_air")
+			m_iInAir++;
+		else if (end == "cutoff")
+			m_iCutoff++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LandOrAir(RMT_FireShot s)
+	{
+		vector p;
+		if (Impact(s, p))
+			Land(s, p, "ground");
+		else
+		{
+			Say(string.Format("fire|in_air|%1|%2|y=%3", m_aPlan[s.m_iPlan][0], s.m_iRound, F(p[1])));
+			Land(s, p, "in_air");
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,8 +296,8 @@ class RMT_FireTestEntity : GenericEntity
 			s.m_fT += dt;
 			if (!s.m_Shell)
 			{
-				// the round went off and was removed: it landed between the last frame and this one
-				Land(s, Impact(s));
+				// the round went off and was removed: it landed between the last frame and this one, or burst in the air
+				LandOrAir(s);
 				m_aFlying.Remove(i);
 				continue;
 			}
@@ -268,26 +313,18 @@ class RMT_FireTestEntity : GenericEntity
 			if (s.m_fT > 0.5 && p[1] <= GetWorld().GetSurfaceY(p[0], p[2]) + 0.2)
 			{
 				s.m_vLast = p;
-				Land(s, Impact(s));
+				LandOrAir(s);
 				delete s.m_Shell;
 				m_aFlying.Remove(i);
 				continue;
 			}
 			s.m_vLast = p;
-			if (m_fMaxT < 90 && s.m_fT > m_fMaxT)
+			if (s.m_fT > m_fMaxT)
 			{
-				// followed as long as wanted: where it is now is where it "landed"
-				Land(s, p);
+				// followed as long as wanted and still flying: recorded where it is now, marked as cut off
+				Land(s, p, "cutoff");
 				delete s.m_Shell;
 				m_aFlying.Remove(i);
-				continue;
-			}
-			if (s.m_fT > 90)
-			{
-				Say(string.Format("fire|lost|%1|%2", m_aPlan[s.m_iPlan][0], s.m_iRound));
-				delete s.m_Shell;
-				m_aFlying.Remove(i);
-				m_iLost++;
 			}
 		}
 	}
@@ -305,15 +342,19 @@ class RMT_FireTestEntity : GenericEntity
 			m_Weather.SetWindSpeedOverride(false);
 			m_Weather.SetWindDirectionOverride(false);
 		}
-		Say(string.Format("fire|done|landed=%1|lost=%2", m_iLanded, m_iLost));
-		string outDir;
-		System.GetCLIParam("rmtOut", outDir);
-		FileHandle f = FileIO.OpenFile(outDir + "/firetest.status.json", FileMode.WRITE);
-		if (f)
+		Say(string.Format("fire|done|rows=%1|lost=%2|in_air=%3|cutoff=%4", m_iLanded, m_iLost, m_iInAir, m_iCutoff));
+		string result = "done";
+		string reason = m_sFailReason;
+		if (reason != "" || m_iLanded == 0)
 		{
-			f.WriteLine(string.Format("{\"job\": \"firetest\", \"result\": \"done\", \"made\": %1, \"skipped\": %2, \"items\": %3}", m_iLanded, m_iLost, m_iLanded));
-			f.Close();
+			result = "failed";
+			if (reason == "")
+				reason = "no round was fired";
 		}
+		else if (m_iLost > 0)
+			reason = string.Format("%1 round(s) could not be spawned or launched", m_iLost);
+		string extra = string.Format("\"in_air\": %1, \"cutoff\": %2, ", m_iInAir, m_iCutoff);
+		RMT_Status.Write("firetest", result, m_iLanded, m_iLost, 0, m_iLanded, reason, extra);
 		GetGame().RequestClose();
 	}
 
@@ -333,9 +374,22 @@ class RMT_FireTestEntity : GenericEntity
 				Finish();
 				return;
 			}
+			// nothing is measured until the world round the first spot has finished streaming
+			float px = m_aPlan[0][3].ToFloat();
+			float pz = m_aPlan[0][4].ToFloat();
+			GetGame().BeginPreload(GetWorld(), Vector(px, GetWorld().GetSurfaceY(px, pz), pz), 500);
+			m_bPreloading = true;
 			m_iState = 1;
 			m_fTimer = 0;
 			return;
+		}
+		if (m_bPreloading)
+		{
+			if (!GetGame().IsPreloadFinished() && m_fTimer < 120)
+				return;
+			m_bPreloading = false;
+			Say(string.Format("fire|streamed|%1|after=%2 s", GetGame().IsPreloadFinished(), m_fTimer));
+			m_fTimer = 0;
 		}
 		if (m_iRow >= m_aPlan.Count())
 		{
@@ -360,7 +414,10 @@ class RMT_FireTestEntity : GenericEntity
 		{
 			if (m_fTimer < m_fSettle)
 				return;
-			Say(string.Format("fire|wind|settled=%1 m/s %2 deg", m_Weather.GetWindSpeed(), m_Weather.GetWindDirection()));
+			if (m_Weather)
+				Say(string.Format("fire|wind|settled=%1 m/s %2 deg", m_Weather.GetWindSpeed(), m_Weather.GetWindDirection()));
+			else
+				Say("fire|wind|settled (no weather manager: the wind is whatever the world has)");
 			m_iState = 1;
 		}
 		if (m_fTimer < m_fGap || m_aFlying.Count() >= MAX_FLYING)
