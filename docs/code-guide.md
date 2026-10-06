@@ -61,6 +61,7 @@ dependencies or validate unknown part names. Missing satellite/relief/foliage in
 | `rmtlib/paths.py`, `events.py` | Source/bundle/workspace paths; JSON-line events and `RMT\|` heartbeat translation |
 | `rmtlib/topo.py`, `pak.py`, `prefab.py` | BI binary map geometry; archive index/read CLI; prefab inheritance/value lookup |
 | `rmtlib/fieldmap.py`, `trees.py` | Install a bake into the website, preserve existing metadata, generate shaped 3D tree records/species |
+| `rmtlib/xob.py`, `edds.py`, `foliage_mesh.py`, `tree_models.py` | Game mesh and texture readers; foliage measured from the meshes (the library, the site option); low-poly 3D tree models |
 | `rmtgui/app.py`, `theme.py` | Setup, World, Data, Run, Website data, Ballistics, Sights, Past runs and Labs pages; settings, UI state and appearance |
 | `rmtgui/worker.py`, `labs.py` | Child-process execution/cancellation and JSON-to-Qt signals; declarative Labs forms/commands |
 | `rmt_gui.py` | GUI entrypoint and packaged console worker; `--worker`, `--script`, `--module` modes; script output/error wrapping |

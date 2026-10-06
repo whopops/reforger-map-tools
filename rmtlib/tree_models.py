@@ -11,7 +11,8 @@ site ships no game geometry or textures.
   far     a second, coarser version (a third of the clumps, a 4-sided trunk) for the 3D view's distant tiles
 
 Checked against the real alpha-tested mesh from 8 sides, as silhouette IoU with the crown's outline closed over 0.4 m
-gaps (what the eye reads as the tree's shape): spruce 3s 0.83, birch 2s 0.85, pine 3s 0.82, hazel 1 0.83.
+gaps (what the eye reads as the tree's shape): spruce 3s 0.84, birch 2s 0.84, pine 3s 0.84, hazel 1 0.82; over all
+species of the three maps median 0.79, lowest 0.53 (dead spruces, whose bare branches are left out).
 
 Writes, beside a published map's trees/species.json (one model per species, in its order):
   trees/models.json     {format, version, verts, near, far, models: [{name, h, near: [first, count], far: [first,
@@ -45,7 +46,7 @@ DENSITY = 300.0       # samples per m^2 of leaf card
 CAP = 60000           # most leaf points kept per species
 CELL = 1.1            # metres of crown per clump (cube root of the crown's box volume / CELL clumps)
 MAX_CLUMPS = 10
-SPARSE = 0.25         # m^2 of solid leaf per m^3 of clump below which a clump is split (see clumps)
+SPARSE = 0.1          # m^2 of solid leaf per m^3 of clump below which a clump is split (see clumps)
 MOST_CLUMPS = 14      # ...up to this many in all
 CLOSE = 0.4           # gaps in the real crown's outline closed for the IoU check (m)
 
@@ -208,7 +209,8 @@ def fit(prefab_path, score=True):
         k = int(np.clip(round(float(np.ptp(bark, 0).max()) / 1.2), 2, MAX_CLUMPS))
     out = {}
     for name, kk, sides, segs in (("near", k, 6, 6), ("far", max(1, round(k / 3)), 4, 3)):
-        model = [(V, F, i + 1) for i, (V, F) in enumerate(clumps(source, kk))]
+        # the far model is not split further: it stays a handful of clumps
+        model = [(V, F, i + 1) for i, (V, F) in enumerate(clumps(source, kk, most=None if name == "near" else kk))]
         tr = trunk(bark, top, sides, segs) if source is pts else None
         if tr is not None:
             model.append((tr[0], tr[1], 0))
@@ -266,12 +268,24 @@ def write(map_dir, score=True, jobs=None, out_dir=None, log=print):
     pref = _prefab_for(names)
     todo = sorted({p for p in pref.values() if p})
     fits = {}
-    with cf.ProcessPoolExecutor(jobs or max(1, (os.cpu_count() or 2) - 2)) as ex:
-        for path, res, err in ex.map(_fit, [(p, score) for p in todo]):
+    # one process unless asked: each process keeps its own copy of every mesh and texture it reads, so in parallel
+    # the memory adds up (one process: under 0.5 GB, about 6 minutes for Everon)
+    jobs = jobs or 1
+    if jobs == 1:
+        results = map(_fit, [(p, score) for p in todo])
+        ex = None
+    else:
+        ex = cf.ProcessPoolExecutor(jobs)
+        results = ex.map(_fit, [(p, score) for p in todo])
+    try:
+        for path, res, err in results:
             if err:
                 log(f"tree models: {path}: {err}")
             else:
                 fits[path] = res
+    finally:
+        if ex:
+            ex.shutdown()
     verts, models = [], []
     for name in names:
         res = fits.get(pref[name])
@@ -314,7 +328,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("map_dir", help="a map's folder of the site, with trees/species.json")
     ap.add_argument("--no-score", action="store_true", help="skip the outline check (faster)")
-    ap.add_argument("--jobs", type=int, default=None)
+    ap.add_argument("--jobs", type=int, default=1, help="processes (default 1; each needs about 0.5 GB or more)")
     ap.add_argument("--out", help="folder for the two files (default the map's trees/)")
     args = ap.parse_args(argv)
     write(args.map_dir, not args.no_score, args.jobs, args.out)

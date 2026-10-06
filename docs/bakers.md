@@ -211,6 +211,13 @@ foliage measurements (the widest-slice outline, a trunk from the narrowest stem 
 height), and the page scales each tree by its own box. Stumps, fallen trunks and debris are left out. Its `format`
 (2) changes only when a field's meaning does; its `version` is a hash of everything written, so browsers refetch.
 
+**Tree models** (`tree_models.py`). Optional, beside `species.json`: `trees/models.json` and `models.bin.gz`, one
+low-poly model per species fitted to the game's own mesh (leaf clumps where its leaves are solid, its trunk; about
+80-350 triangles near, a coarser one for distant tiles; 80-150 KB a map). The site's 3D view draws them for **Tree
+shapes: Models**, each tree at its own height and yaw from the tiles above. Made from a published map folder, no bake
+or game run needed: `python -m rmtlib.tree_models <site>/data/maps/<id>`; one process (about 0.5-2 GB, 6-15 minutes a
+map). The models are our own shapes, not the game's geometry or textures.
+
 **Tree colours.** The foliage photos are taken against a bright hazy sky, which washes leaf colours out, so the
 site's Everon tree table carries hand-tuned colours. `fieldmap` reads them from
 `static/data/maps/everon/trees/species.json` before rebuilding and gives every kind it knows the same colours, on

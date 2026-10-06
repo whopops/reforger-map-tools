@@ -55,6 +55,7 @@ BANDS = (25, 50, 100, 200, 300)      # metres, as the photo job's FoliageLod def
 FOV = 40.0                           # the photo job's lens (vertical, degrees) and picture height
 SCREEN_H = 1440
 EYE = 1.7                            # the camera's height above the plant's base, a standing player's eye
+VIEW_X, VIEW_Y = 2000, 1600          # pixels from the centre drawn at most: more than any band reaches, a bound
 PIXEL_ANGLE = 2 * math.tan(math.radians(FOV / 2)) / SCREEN_H   # metres per pixel per metre of distance
 FORMAT = 1
 METHOD = 2                           # raise when the measurement changes: every record is measured again
@@ -131,7 +132,7 @@ def material(path):
     return op, float(fade) if fade else 0.0
 
 
-@functools.lru_cache(maxsize=64)
+@functools.lru_cache(maxsize=16)
 def opacity(path):
     return edds.mips(_bytes(path))
 
@@ -358,8 +359,13 @@ def draw_view(parts, yaw, cam):
     R = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
     P = [p.positions @ R.T for p in parts]
     proj = [cam.project(p) for p in P]
-    allx = np.concatenate([q[0] for q in proj])
-    ally = np.concatenate([q[1] for q in proj])
+    # the canvas: what is in front of the camera, within the photo's frame and a margin (a vertex just in front of
+    # the lens projects thousands of screens away; sizing the canvas by it once asked for 112 GiB)
+    front = np.concatenate([q[2] for q in proj]) > 0.05
+    allx = np.clip(np.concatenate([q[0] for q in proj])[front], -VIEW_X, VIEW_X)
+    ally = np.clip(np.concatenate([q[1] for q in proj])[front], -VIEW_Y, VIEW_Y)
+    if not len(allx):
+        allx = ally = np.zeros(1)
     ox, oy = int(math.floor(allx.min())) - 2, int(math.floor(ally.min())) - 2
     W, H = int(math.ceil(allx.max())) - ox + 3, int(math.ceil(ally.max())) - oy + 3
     blocked = np.zeros((H, W), bool)

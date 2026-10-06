@@ -21,6 +21,7 @@ files/bytes and reports unknown inputs. Audit checks coverage, not freshness, co
 | `plants/*.bin.gz`, `foliage.json` | entities + photographed shapes → `bake_plants.py` | Data: Trees and foliage |
 | `foliage/foliage_profiles.json` | foliage capture → `foliage.py` | Data: Trees and foliage |
 | `trees/*.bin.gz`, `trees/species.json` | `trees.py`, installed by `fieldmap.py` | Data: install into field map |
+| `trees/models.json`, `trees/models.bin.gz` | `python -m rmtlib.tree_models <map folder>` (from the game's meshes) | command line |
 | `tiles/z/x/y.jpg` | satellite capture → `satellite.py` | Data: Satellite imagery |
 | `relief/z/x/y.jpg` | mapdata raster + LOS → `relief.py` | Data: Relief map |
 | `<map>.json`: bases, HQs, supplies, spawns, repair/refuel, FIA cache references | Conflict job → `bake_conflict.py` / `conflict.py` | Website data → Conflict references (Labs) |
